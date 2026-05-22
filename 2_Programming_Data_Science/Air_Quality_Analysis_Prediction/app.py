@@ -370,9 +370,12 @@ def render_predict(df):
         for feat in other_pollutants:
             if feat in df_numeric.columns:
                 lo, hi = feature_ranges.get(feat, (float(df_numeric[feat].min()), float(df_numeric[feat].max())))
-                if lo == hi:
+                if hi <= lo:
                     hi = lo + 10
                 default = float(df_numeric[feat].median())
+                default = max(lo, min(hi, default))
+                if pd.isna(default):
+                    default = (lo + hi) / 2
                 input_features[feat] = st.slider(f"{feat.upper()} (µg/m³)", lo, hi, default, 0.1)
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -383,9 +386,12 @@ def render_predict(df):
         for feat in weather_feats:
             if feat in df_numeric.columns:
                 lo, hi = feature_ranges.get(feat, (float(df_numeric[feat].min()), float(df_numeric[feat].max())))
-                if lo == hi:
+                if hi <= lo:
                     hi = lo + 10
                 default = float(df_numeric[feat].median())
+                default = max(lo, min(hi, default))
+                if pd.isna(default):
+                    default = (lo + hi) / 2
                 input_features[feat] = st.slider(
                     feat.replace("_", " ").title(), lo, hi, default, 0.1
                 )
