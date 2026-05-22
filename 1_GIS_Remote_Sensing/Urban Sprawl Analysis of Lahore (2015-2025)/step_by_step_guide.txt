@@ -1,0 +1,47 @@
+# Step-by-Step Guide: Urban Sprawl Analysis of Lahore (2015-2025)
+This workflow uses Google Earth Engine for Machine Learning image classification and QGIS/ArcGIS for morphological analysis and future geographic predictions.
+
+## Phase 1: Machine Learning LULC Classification in GEE
+1. Navigate to the Google Earth Engine Code Editor.
+2. Paste the `gee_urban_sprawl_script.js` code.
+3. Draw Training Data (Crucial Step):
+   - The script uses placeholders for the Random Forest Classifier. For a portfolio-quality map, you must draw your own polygons!
+   - Use the 'Draw a Shape' tool to create two new Geometry Imports.
+   - Name one `urbanTrain` (set properties: class = 1) and draw polygons over buildings, concrete, and roads using the True Color satellite layer.
+   - Name the other `nonUrbanTrain` (set properties: class = 0) and draw polygons over fields, water, and barren sand.
+   - Replace the `sampleUrban` and `sampleNonUrban` variables in the code with your new geometry variables.
+4. Run the Script. Inspect the red/green classification maps.
+5. Export both the `Lahore_LULC_2015` and `Lahore_LULC_2025` rasters from the "Tasks" tab to your Google Drive. 
+
+## Phase 2: Direction of Expansion Analysis in ArcGIS Pro 3.4
+To visually show investors/planners "which way" the city is growing:
+1. Open ArcGIS Pro 3.4 and add both your 2015 and 2025 rasters.
+2. Convert Rasters to Points:
+   - Use the "Raster to Point" tool on the 2015 raster (filtering only the pixels with value = 1 for urban). Do the exact same for 2025.
+3. Standard Deviational Ellipse:
+   - Go to Spatial Statistics Tools -> Measuring Geographic Distributions -> "Directional Distribution (Standard Deviational Ellipse)".
+   - Run this twice (once for the 2015 points, once for 2025 points).
+   - *Result*: You will get two ellipses. Overlaying them immediately shows not only how much the city has grown, but the axial tilt of the expansion (e.g., pulling South-West towards new highways).
+
+## Phase 3: Predicting Future Boundaries (2035) using QGIS
+*Note: While possible via heavy code in ArcGIS, the absolute industry standard for this specific modeling is an open-source QGIS plugin.*
+1. Open QGIS (Download version 3.28 LTR or slightly older if needed for plugin compatibility).
+2. Install the MOLUSCE Plugin:
+   - Go to Plugins -> Manage and Install Plugins. Search for and install "MOLUSCE" (Modules for Land Use Change Simulations).
+3. Setup the Simulation:
+   - Inputs: Set Initial Image to `Lahore_LULC_2015.tif` and Final Image to `Lahore_LULC_2025.tif`.
+   - Spatial Variables: (Optional but recommended) add a distance-to-roads raster or elevation raster as "Predictor Variables".
+4. Train the Model:
+   - In the "Area Changes" tab, click update to calculate transition matrices.
+   - In the "Transition Potential Modeling" tab, select "Multi Layer Perceptron (ANN)" or "Logistic Regression" and hit Train. This teaches the AI how pixels transitioned over the last 10 years based on their surroundings.
+5. Predict:
+   - Go to the "Cellular Automata Simulation" tab.
+   - Set the iteration to 10 (which simulates 10 years into the future, predicting 2035).
+   - Click "Start". It will generate a brand new raster predicting the exact geographic boundary of Lahore in 2035!
+
+## Phase 4: Final Deliverables
+Compile your results into a final layout (in either ArcGIS or QGIS). Your layout should feature:
+- A prominent map showing 2015 Urban vs 2025 Sprawl.
+- The Directional Ellipses to highlight the expansion angle.
+- The 2035 predictive boundary footprint.
+- A small text box reporting the total Square Kilometers added over the decade (recorded in the GEE Console).

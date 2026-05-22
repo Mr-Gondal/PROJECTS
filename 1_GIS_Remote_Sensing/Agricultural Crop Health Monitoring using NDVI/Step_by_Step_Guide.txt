@@ -1,0 +1,493 @@
+================================================================================
+STEP-BY-STEP GUIDE: Agricultural Crop Health Monitoring using NDVI
+Using Google Earth Engine (GEE) with ArcGIS Pro 3.4 (Optional)
+================================================================================
+
+TABLE OF CONTENTS:
+1. Prerequisites and Setup
+2. Google Earth Engine Setup
+3. Running the GEE Script
+4. Exporting Results
+5. Importing Results into ArcGIS Pro 3.4
+6. Analysis and Visualization in ArcGIS Pro
+7. Interpretation of Results
+8. Troubleshooting
+
+================================================================================
+SECTION 1: PREREQUISITES AND SETUP
+================================================================================
+
+STEP 1.1: Create Required Accounts
+-----------------------------------
+1. Google Earth Engine Account:
+   - Go to: https://earthengine.google.com/
+   - Click "Sign Up"
+   - Sign in with your Google account
+   - Fill out the registration form
+   - Wait for approval (usually takes 1-2 days)
+   - You'll receive an email when approved
+
+2. Google Drive Account (for exporting results):
+   - Go to: https://drive.google.com/
+   - Sign in with your Google account
+   - Ensure you have at least 2-3 GB of free space
+
+3. ArcGIS Pro 3.4 (Optional but recommended):
+   - Already installed on your system
+   - Ensure you have an active ArcGIS license
+
+
+STEP 1.2: Install Required Software
+------------------------------------
+1. Web Browser (Chrome/Firefox recommended)
+2. ArcGIS Pro 3.4 (already installed)
+3. (Optional) QGIS if you want a free alternative
+
+
+================================================================================
+SECTION 2: GOOGLE EARTH ENGINE SETUP
+================================================================================
+
+STEP 2.1: Access GEE Code Editor
+---------------------------------
+1. Open your web browser
+2. Go to: https://code.earthengine.google.com/
+3. Sign in with your Google account
+4. Wait for the Code Editor to load (may take 30-60 seconds)
+5. You'll see three main panels:
+   - Left: Scripts panel (your saved scripts)
+   - Center: Code Editor (where you write/paste code)
+   - Right: Console, Inspector, and Tasks panels
+
+
+STEP 2.2: Familiarize Yourself with the Interface
+--------------------------------------------------
+1. Code Editor (Center):
+   - This is where you'll paste the JavaScript code
+   - Has syntax highlighting and auto-complete
+
+2. Map Panel (Center):
+   - Interactive map showing your study area
+   - Use mouse to zoom and pan
+
+3. Console (Right):
+   - Shows output from print() statements
+   - Displays charts and statistics
+
+4. Tasks (Right):
+   - Shows export tasks
+   - You must click "Run" for each export task
+
+5. Inspector (Right):
+   - Click on map to see pixel values
+
+
+================================================================================
+SECTION 3: RUNNING THE GEE SCRIPT
+================================================================================
+
+STEP 3.1: Create a New Script
+------------------------------
+1. In the GEE Code Editor, click "New Script" button (top-left)
+2. Name it: "Crop_Health_Monitoring_Punjab"
+3. Click "Save"
+
+
+STEP 3.2: Copy and Paste the Code
+----------------------------------
+1. Open the file: GEE_NDVI_Crop_Health_Monitoring.js
+2. Select all text (Ctrl+A)
+3. Copy (Ctrl+C)
+4. Go back to GEE Code Editor
+5. Paste the code (Ctrl+V)
+6. Click "Save" again
+
+
+STEP 3.3: Customize the Script for Your Area
+---------------------------------------------
+IMPORTANT: You need to define your specific Area of Interest (AOI)
+
+OPTION A: Draw AOI Manually (Recommended for beginners)
+1. In the GEE Code Editor, look at the map
+2. Navigate to Punjab region (or your study area)
+3. Click the "Geometry Imports" button (left panel, below search bar)
+4. Click the polygon tool (shape icon)
+5. Draw a polygon around your agricultural area
+6. The geometry will appear in the Imports section at top of code
+7. In the code, change line 16 to:
+   var aoi = geometry;  // Use the drawn geometry
+
+OPTION B: Use Coordinates
+1. Find coordinates of your study area
+2. Modify line 16 in the code:
+   var aoi = ee.Geometry.Rectangle([min_lon, min_lat, max_lon, max_lat]);
+   Example for Punjab: [71.5, 29.2, 75.5, 32.5]
+
+OPTION C: Upload Shapefile (Advanced)
+1. Prepare your shapefile in ArcGIS Pro
+2. In GEE, click "Assets" (left panel)
+3. Click "Upload"
+4. Select your shapefile components (.shp, .shx, .dbf, .prj)
+5. Wait for upload to complete (may take several minutes)
+6. In code, uncomment line 19 and change to your asset path:
+   var aoi = ee.FeatureCollection('users/your_username/your_shapefile');
+
+
+STEP 3.4: Adjust Date Range
+-----------------------------
+1. Find lines 25-26 in the code
+2. Modify dates as needed:
+   var endDate = ee.Date('2025-12-31');
+   var startDate = ee.Date('2024-01-01');
+3. For current analysis, use:
+   var endDate = ee.Date(Date.now());
+   var startDate = endDate.advance(-12, 'month');
+
+
+STEP 3.5: Run the Script
+-------------------------
+1. Click the "Run" button (top-center of Code Editor)
+2. Wait for processing (may take 30 seconds to several minutes)
+3. Check the Console panel (right) for:
+   - Total images found
+   - NDVI statistics
+   - Time series chart
+4. Check the Map panel for:
+   - Your AOI boundary (red)
+   - Latest NDVI layer (colored)
+   - Crop health classification
+   - Legend (bottom-left)
+
+
+STEP 3.6: Explore the Results
+------------------------------
+1. Zoom in/out on the map to see details
+2. Click on different areas using the Inspector tool (right panel)
+3. View the NDVI time series chart in Console
+4. Check statistics printed in Console
+
+
+================================================================================
+SECTION 4: EXPORTING RESULTS
+================================================================================
+
+STEP 4.1: Start Export Tasks
+------------------------------
+The script includes automatic export setup. You need to manually run each export:
+
+1. Click on the "Tasks" tab (right panel)
+2. You'll see several export tasks listed:
+   - Latest_NDVI_Punjab
+   - Crop_Health_Classification
+   - Mean_NDVI_Punjab
+   - NDVI_Time_Series_Statistics
+   - Peak_NDVI_Yield_Indicator
+
+3. For each task:
+   a. Click the "Run" button next to the task
+   b. A dialog box will appear with export settings
+   c. Review the settings (usually no changes needed)
+   d. Click "Run" to confirm
+
+4. Wait for all tasks to complete (check status in Tasks panel)
+   - Status will change from "Ready" to "Running" to "Completed"
+   - This may take 5-30 minutes depending on data size
+
+
+STEP 4.2: Download from Google Drive
+-------------------------------------
+1. Go to: https://drive.google.com/
+2. Navigate to folder: "Crop_Health_Monitoring"
+3. You'll find these files:
+   - NDVI_Punjab_YYYY_MM_DD.tif (Latest NDVI raster)
+   - Health_Class_Punjab_YYYY_MM_DD.tif (Health classification)
+   - Mean_NDVI_Punjab_YYYY_MM_DD_to_YYYY_MM_DD.tif (Mean NDVI)
+   - NDVI_Stats_Punjab.csv (Time series statistics)
+   - Peak_NDVI_Punjab.tif (Peak NDVI for yield estimation)
+
+4. Download all files to your computer
+5. Save to a dedicated folder, e.g.:
+   C:\Users\HP\Desktop\portfolio\CLI\1_GIS_Remote_Sensing\Agricultural Crop Health Monitoring using NDVI\Results
+
+
+================================================================================
+SECTION 5: IMPORTING RESULTS INTO ARCGIS PRO 3.4
+================================================================================
+
+STEP 5.1: Create ArcGIS Pro Project
+------------------------------------
+1. Open ArcGIS Pro 3.4
+2. Click "New Project"
+3. Choose "Map" template
+4. Name it: "Crop_Health_Monitoring"
+5. Choose location and click "OK"
+
+
+STEP 5.2: Add Raster Layers
+-----------------------------
+1. In ArcGIS Pro, go to the "Map" tab
+2. Click "Add Data"
+3. Navigate to your Results folder
+4. Add these raster files one by one:
+   - NDVI_Punjab_YYYY_MM_DD.tif
+   - Health_Class_Punjab_YYYY_MM_DD.tif
+   - Mean_NDVI_Punjab.tif
+   - Peak_NDVI_Punjab.tif
+
+5. Each raster will appear in the Contents panel (left)
+
+
+STEP 5.3: Symbology Setup for NDVI
+-----------------------------------
+1. Right-click on the NDVI layer in Contents
+2. Click "Symbology"
+3. In the Symbology panel:
+   - Method: Classified
+   - Classes: 10
+   - Color scheme: Green gradient (light to dark)
+   - Click "Classify" button
+   - Method: Natural Breaks (Jenks)
+   - Click "OK"
+
+4. For Health Classification layer:
+   - Method: Unique Values
+   - Classes: 5
+   - Use this color scheme:
+     Class 1 (Stressed): Red
+     Class 2 (Moderate Stress): Orange
+     Class 3 (Moderate): Yellow
+     Class 4 (Healthy): Light Green
+     Class 5 (Very Healthy): Dark Green
+
+
+STEP 5.4: Add Base Map
+-----------------------
+1. Go to "Map" tab
+2. Click "Basemap"
+3. Choose "Imagery" or "Topographic"
+4. This provides context for your analysis
+
+
+STEP 5.5: Import CSV Statistics
+--------------------------------
+1. Go to "Insert" tab
+2. Click "New Table"
+3. Choose "From Text/CSV"
+4. Select: NDVI_Stats_Punjab.csv
+5. Review the table to see NDVI trends over time
+
+
+================================================================================
+SECTION 6: ANALYSIS AND VISUALIZATION IN ARCGIS PRO
+================================================================================
+
+STEP 6.1: Create Layout for Map Export
+---------------------------------------
+1. Go to "Insert" tab
+2. Click "New Layout"
+3. Choose paper size (e.g., A4 or Letter)
+4. Add map frame:
+   - Click "Map Frame" on Layout tab
+   - Draw rectangle on layout
+   - Select your map
+
+5. Add map elements:
+   - Title: "Crop Health Monitoring - Punjab Region"
+   - Legend
+   - Scale bar
+   - North arrow
+   - Date and your name
+
+6. Export layout:
+   - Right-click layout in Catalog
+   - Export Layout
+   - Choose PDF or PNG format
+
+
+STEP 6.2: Zonal Statistics (Optional Advanced Analysis)
+-------------------------------------------------------
+If you have administrative boundaries or field boundaries:
+
+1. Add your boundary shapefile to ArcGIS Pro
+2. Go to "Analysis" tab
+3. Click "Tools"
+4. Search for "Zonal Statistics as Table"
+5. Input:
+   - Input raster: NDVI layer
+   - Zone field: Your boundary field
+   - Output table: NDVI_by_Zone.dbf
+
+6. This gives you average NDVI per administrative zone or field
+
+
+STEP 6.3: Change Detection (Optional)
+--------------------------------------
+To compare NDVI between different time periods:
+
+1. Go to "Analysis" tab
+2. Click "Tools"
+3. Search for "Raster Calculator"
+4. Enter formula:
+   "NDVI_Latest" - "NDVI_Older"
+5. This shows areas where NDVI increased (green) or decreased (red)
+
+
+================================================================================
+SECTION 7: INTERPRETATION OF RESULTS
+================================================================================
+
+NDVI Value Interpretation:
+---------------------------
+NDVI Range      | Vegetation Condition    | Crop Health
+----------------|------------------------|------------------
+0.8 - 1.0       | Very dense vegetation  | Excellent
+0.6 - 0.8       | Dense vegetation       | Very Good
+0.4 - 0.6       | Moderate vegetation    | Good
+0.2 - 0.4       | Sparse vegetation      | Fair/Stressed
+0.0 - 0.2       | Bare soil              | Poor/No crops
+-0.1 - 0.0      | Water/Urban            | Not applicable
+
+
+Crop Health Classification:
+----------------------------
+Class | Color  | NDVI Range  | Interpretation
+------|--------|-------------|------------------------------------------
+5     | Green  | > 0.7       | Very healthy crops, dense vegetation
+4     | L.Green| 0.5 - 0.7   | Healthy crops, good growth
+3     | Yellow | 0.3 - 0.5   | Moderate health, some stress possible
+2     | Orange | 0.2 - 0.3   | Stressed crops, needs attention
+1     | Red    | < 0.2       | Severely stressed or no vegetation
+
+
+Time Series Analysis:
+---------------------
+- Look at the NDVI time series chart in GEE Console
+- Rising trend: Crops are growing (good sign)
+- Peak NDVI: Maximum vegetation vigor (usually mid-season)
+- Declining trend: Crop maturity or harvest
+- Sudden drops: Possible stress events (drought, pest, disease)
+
+
+Yield Estimation:
+-----------------
+- Higher peak NDVI generally correlates with higher yields
+- Compare peak NDVI across years or regions
+- Areas with consistently low NDVI may need intervention
+- Use the CSV statistics to quantify trends
+
+
+================================================================================
+SECTION 8: TROUBLESHOOTING
+================================================================================
+
+Problem: "No images found"
+Solution:
+- Expand your date range
+- Increase cloud cover threshold (line 38: change 20 to 30 or 40)
+- Check that your AOI is in the correct location
+- Verify Sentinel-2 data is available for your dates
+
+Problem: Export task fails
+Solution:
+- Reduce the AOI size (smaller area = less data)
+- Increase the scale parameter (change 10 to 20 or 100)
+- Check Google Drive has enough storage space
+- Try exporting in smaller chunks
+
+Problem: Map shows no data or blank
+Solution:
+- Make sure you clicked "Run" on the script
+- Check that your AOI is visible on the map
+- Verify the NDVI layer is turned on (checkbox in Layers panel)
+- Adjust the visualization parameters (ndviVis object)
+
+Problem: Too many clouds in images
+Solution:
+- Lower the cloud threshold (line 38: change 20 to 10)
+- Use median composite instead of individual images
+- Choose a different time period (dry season has fewer clouds)
+
+Problem: Script runs very slowly
+Solution:
+- Reduce the AOI size
+- Shorten the date range
+- Increase the scale (resolution) for faster processing
+- Run during off-peak hours (GEE servers may be busy)
+
+Problem: ArcGIS Pro can't open TIFF files
+Solution:
+- Ensure files downloaded completely from Google Drive
+- Check that the TIFF files aren't corrupted
+- Try re-downloading from Google Drive
+- Verify ArcGIS Pro has Spatial Analyst extension enabled
+
+Problem: CSV file shows strange formatting
+Solution:
+- Open CSV in Excel or similar software
+- Use "Text to Columns" feature with comma delimiter
+- The file contains date, mean, stdDev, min, max columns
+
+
+================================================================================
+ADDITIONAL TIPS AND BEST PRACTICES
+================================================================================
+
+1. Save Your Work:
+   - Save your GEE script regularly (Ctrl+S)
+   - Export results to organized folders
+   - Keep a backup of important files
+
+2. Document Your Analysis:
+   - Record the date range used
+   - Note any modifications to the script
+   - Keep track of which images were used
+
+3. Validate Results:
+   - Compare with ground truth data if available
+   - Cross-reference with known crop calendars
+   - Check against weather data (drought periods)
+
+4. Improve Accuracy:
+   - Use smaller, field-level AOIs for detailed analysis
+   - Combine with weather data for better interpretation
+   - Use multiple vegetation indices (EVI, NDRE, SAVI)
+
+5. Share Results:
+   - Export maps as PDF/PNG for reports
+   - Share GEE script link with collaborators
+   - Create presentations with time series charts
+
+
+================================================================================
+QUICK REFERENCE: GEE Code Editor Shortcuts
+================================================================================
+Ctrl + S      - Save script
+Ctrl + Enter  - Run script
+Ctrl + /      - Comment/uncomment line
+Ctrl + Z      - Undo
+Ctrl + Y      - Redo
+Ctrl + F      - Find
+Ctrl + H      - Replace
+
+
+================================================================================
+CONTACT AND SUPPORT
+================================================================================
+
+Google Earth Engine:
+- Documentation: https://developers.google.com/earth-engine
+- User Forum: https://groups.google.com/g/google-earth-engine-developers
+- API Reference: https://developers.google.com/earth-engine/apidocs
+
+ArcGIS Pro:
+- Help: https://pro.arcgis.com/en/pro-app/latest/help/
+- Community: https://community.esri.com/
+
+
+================================================================================
+END OF GUIDE
+================================================================================
+
+Last Updated: April 2026
+Compatible with: GEE (JavaScript API), ArcGIS Pro 3.4
+Script File: GEE_NDVI_Crop_Health_Monitoring.js

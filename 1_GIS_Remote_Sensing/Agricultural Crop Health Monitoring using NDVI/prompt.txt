@@ -1,0 +1,3 @@
+read the readme file, and then write then using the web search write the working code for GEE, that will do
+everything for me as need for the readme file. And also make a .txt file, to tell me how to do it step by step, I am
+using the ArcGIS pro 3.4, just in case if i need to do work in arcgis.

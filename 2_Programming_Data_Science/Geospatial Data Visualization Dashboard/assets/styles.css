@@ -1,0 +1,313 @@
+/*
+Geospatial Dashboard - Custom Styles
+====================================
+
+Author: Haris Hussain - GIS Analyst | Geospatial Data Specialist
+
+This CSS file contains custom styling for the Geospatial Dashboard.
+Override Streamlit default styles and add custom components.
+*/
+
+/* =============================================================================
+   GLOBAL STYLES
+   ============================================================================= */
+
+/* Main container */
+.main .block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    max-width: 100%;
+}
+
+/* Remove default Streamlit padding */
+.stApp {
+    background-color: #f8f9fa;
+}
+
+/* =============================================================================
+   HEADER STYLES
+   ============================================================================= */
+
+.main-header {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f77b4;
+    text-align: center;
+    margin-bottom: 1rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.sub-header {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin-top: 1.5rem;
+    border-bottom: 2px solid #1f77b4;
+    padding-bottom: 0.5rem;
+}
+
+/* =============================================================================
+   METRIC CARDS
+   ============================================================================= */
+
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+}
+
+.metric-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.metric-card h2 {
+    margin: 0.5rem 0;
+    font-size: 2rem;
+}
+
+/* =============================================================================
+   INFO BOXES
+   ============================================================================= */
+
+.info-box {
+    background-color: #e7f3ff;
+    border-left: 5px solid #1f77b4;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 10px 10px 0;
+}
+
+.warning-box {
+    background-color: #fff3cd;
+    border-left: 5px solid #ffc107;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 10px 10px 0;
+}
+
+.success-box {
+    background-color: #d4edda;
+    border-left: 5px solid #28a745;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 10px 10px 0;
+}
+
+.danger-box {
+    background-color: #f8d7da;
+    border-left: 5px solid #dc3545;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 10px 10px 0;
+}
+
+/* =============================================================================
+   SIDEBAR STYLES
+   ============================================================================= */
+
+.sidebar-header {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1f77b4;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Sidebar radio buttons */
+section[aria-label="Navigation"] .stRadio > label {
+    font-weight: 600;
+}
+
+/* Sidebar selectbox */
+section[data-testid="stSidebar"] .stSelectbox label {
+    font-weight: 500;
+}
+
+/* =============================================================================
+   CHART STYLES
+   ============================================================================= */
+
+/* Plotly chart container */
+.js-plotly-plot {
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Chart title styling */
+.js-plotly-plot .gtitle {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* =============================================================================
+   MAP STYLES
+   ============================================================================= */
+
+/* Folium map container */
+.stFoliumMap {
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* =============================================================================
+   TABLE STYLES
+   ============================================================================= */
+
+/* Dataframe styling */
+.stDataFrame {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stDataFrame thead th {
+    background-color: #1f77b4 !important;
+    color: white !important;
+    font-weight: 600;
+}
+
+.stDataFrame tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.stDataFrame tbody tr:hover {
+    background-color: #e7f3ff;
+}
+
+/* =============================================================================
+   BUTTON STYLES
+   ============================================================================= */
+
+/* Primary button */
+.stButton > button[kind="primary"] {
+    background-color: #1f77b4;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background-color: #155084;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Download button */
+.stDownloadButton > button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+}
+
+.stDownloadButton > button:hover {
+    background-color: #218838;
+}
+
+/* =============================================================================
+   INPUT STYLES
+   ============================================================================= */
+
+/* Text input */
+.stTextInput > div > div > input {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: #1f77b4;
+    box-shadow: 0 0 0 2px rgba(31, 119, 180, 0.2);
+}
+
+/* Selectbox */
+.stSelectbox > div > div > div {
+    border-radius: 8px;
+}
+
+/* Slider */
+.stSlider > div > div > div > div {
+    background-color: #1f77b4;
+}
+
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Pulse animation for metrics */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* =============================================================================
+   RESPONSIVE STYLES
+   ============================================================================= */
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .main-header {
+        font-size: 1.8rem;
+    }
+
+    .sub-header {
+        font-size: 1.2rem;
+    }
+
+    .metric-card {
+        padding: 1rem;
+    }
+
+    .metric-card h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+    .stSidebar {
+        display: none;
+    }
+
+    .main-header {
+        color: #000;
+    }
+
+    .info-box, .warning-box {
+        border: 1px solid #ddd;
+    }
+}

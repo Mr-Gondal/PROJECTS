@@ -1,0 +1,56 @@
+# Step-by-Step Guide: Site Suitability Analysis for Solar Power Plants
+This guide outlines the workflow for performing a Multi-Criteria Decision Analysis (MCDA) for utility-scale solar farm placement using Google Earth Engine (GEE) and ArcGIS Pro 3.4.
+
+## Phase 1: Raster Generation via Google Earth Engine (GEE)
+1. Go to the [Google Earth Engine Code Editor](https://code.earthengine.google.com/).
+2. Copy and paste the contents of `gee_solar_suitability_script.js` into the script window.
+3. Review Region of Interest (ROI):
+   - The script defaults to Punjab, India using the FAO GAUL administrative boundaries. If you are targeting Punjab, Pakistan, modify the filter on Line 13 in the script.
+4. Run the Script by clicking the "Run" button. The map will load an initial suitability layout prioritizing high radiation, flat terrain, south-facing aspects, and barren land while explicitly excluding protected areas and water bodies.
+5. Export the Data:
+   - Go to the "Tasks" tab on the right side.
+   - Run the task named `Solar_Site_Suitability_Base` to export the raster as a TIF to your Google Drive.
+6. Download the generated TIF file to your local workspace. 
+
+## Phase 2: Processing Grid Proximity in ArcGIS Pro 3.4
+*Note: GEE does not have reliable high-voltage transmission line data out-of-the-box. Proximity to the grid is an essential factor, so we will incorporate it natively in ArcGIS Pro using local vector data.*
+
+1. Open ArcGIS Pro 3.4 and Start a New Map Project.
+2. Load the GEE Export:
+   - Add your `Solar_Site_Suitability_Base.tif` raster obtained from GEE into the map (Map -> Add Data).
+3. Acquire Grid Network Data:
+   - Obtain vector data (Shapefile/Feature Class) of the regional electrical grid (transmission lines and substations) for Punjab. You can often export this from OpenStreetMap (using Overpass Turbo for "power=line") or from government energy portals.
+   - Import this vector layer into ArcGIS Pro.
+4. Calculate Distance to Grid:
+   - Open the "Euclidean Distance" tool (Spatial Analyst -> Distance).
+   - Input Feature: Your power grid vector layer.
+   - Output Cell Size: Set this to 30 to match your GEE raster resolution.
+   - Run the tool to generate a "Distance_to_Grid" raster.
+5. Normalize the Grid Distance Raster:
+   - Open the "Rescale by Function" tool.
+   - Input Raster: The new `Distance_to_Grid` raster.
+   - Transformation Function: Select "Linear".
+   - You want smaller distances (closer to the grid) to have high suitability (1.0), and far distances to have low suitability (0.0). Adjust the Lower/Upper thresholds to reflect this inverse relationship (e.g., 0 meters = 1.0, 10,000 meters = 0.0). Save it as `Grid_Suitability`.
+
+## Phase 3: Final MCDA Weighted Overlay
+Now we combine the base suitability from GEE with the Grid suitability derived in ArcGIS Pro.
+
+1. Open the "Raster Calculator" tool (Spatial Analyst -> Map Algebra).
+2. Construct the Final Suitability Equation:
+   - We will assign a 75% weight to your GEE Base characteristics (Solar, land cover, slope) and a 25% weight to Grid proximity.
+   - Enter the expression: 
+     `("Solar_Site_Suitability_Base.tif" * 0.75) + ("Grid_Suitability.tif" * 0.25)`
+3. Mask the final output:
+   - Use the "Extract by Attributes" or "Set Null" tool. The GEE Base raster contains absolute exclusions (0.0 values) for Protected Areas, water, and steep slopes. Ensure that any pixel where `Solar_Site_Suitability_Base` was essentially 0 gets forced to 0 on the final composite map, overriding the grid proximity scoring.
+
+## Phase 4: Final Mapping & Delivery
+1. Style the Final Map:
+   - Right-click your final Raster Calculator output -> Symbology.
+   - Choose a graduated color scheme (e.g., Red to Green, where Dark Green designates 'Highly Suitable').
+2. Locate Top Candidates:
+   - Utilize "Con" (Conditional) tools to isolate contiguous blocks of pixels > 0.85. 
+   - Convert these optimal pixel clusters to polygons ("Raster to Polygon").
+   - Filter out polygons smaller than a certain threshold (e.g., less than 10 Acres) depending on utility scale needs.
+3. Layout Production:
+   - Navigate to Insert -> New Layout. Add a legend, title "Solar Farm Site Suitability - Punjab", scale bar, and North Arrow. 
+   - Export Map as PDF/PNG.

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(www.mapcrafty.com)",
+      "Read(C:\\Users\\HP\\Desktop\\portfolio\\CLI\\1_GIS_Remote_Sensing\\Deforestation Detection in Northern Pakistan/**)",
+      "WebFetch(medium.com)",
+      "WebFetch(developers.google.com)"
+    ]
+  },
+  "$version": 3
+}
