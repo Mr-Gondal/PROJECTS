@@ -206,7 +206,6 @@ def render_overview(df):
     col_left, col_right = st.columns([1, 1])
     with col_left:
         st.markdown('<div class="card"><h3>📈 AQI Comparison — All Cities</h3>', unsafe_allow_html=True)
-        fig = __import__("plotly.express", fromlist=[""]).__import__("plotly.express", fromlist=["line"])
         import plotly.express as px
 
         df_plot = df.copy()
@@ -371,6 +370,8 @@ def render_predict(df):
         for feat in other_pollutants:
             if feat in df_numeric.columns:
                 lo, hi = feature_ranges.get(feat, (float(df_numeric[feat].min()), float(df_numeric[feat].max())))
+                if lo == hi:
+                    hi = lo + 10
                 default = float(df_numeric[feat].median())
                 input_features[feat] = st.slider(f"{feat.upper()} (µg/m³)", lo, hi, default, 0.1)
 
@@ -382,6 +383,8 @@ def render_predict(df):
         for feat in weather_feats:
             if feat in df_numeric.columns:
                 lo, hi = feature_ranges.get(feat, (float(df_numeric[feat].min()), float(df_numeric[feat].max())))
+                if lo == hi:
+                    hi = lo + 10
                 default = float(df_numeric[feat].median())
                 input_features[feat] = st.slider(
                     feat.replace("_", " ").title(), lo, hi, default, 0.1
