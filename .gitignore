@@ -4,11 +4,8 @@ __pycache__/
 .env
 venv/
 .venv/
-*.joblib
-*.csv
-*.png
-*.jpg
-*.jpeg
 .ipynb_checkpoints/
 .DS_Store
 Thumbs.db
+**/figures/
+**/__pycache__/

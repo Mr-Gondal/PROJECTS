@@ -22,7 +22,7 @@ A collection of portfolio projects spanning **Geographic Information Systems**, 
 
 An interactive web dashboard analyzing air quality across 5 Pakistan cities with ML-powered predictions.
 
-➡️ See `2_Programming_Data_Science/Air Quality Analysis & Prediction Model/`
+➡️ See `2_Programming_Data_Science/Air_Quality_Analysis_Prediction/`
 
 ---
 
