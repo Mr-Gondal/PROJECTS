@@ -515,14 +515,18 @@ def main():
         )
 
     if use_api and api_token:
-        with st.spinner("Fetching live AQI data from OpenWeatherMap..."):
+        with st.spinner("Fetching live data from OpenWeatherMap..."):
             collector = AirQualityCollector(token=api_token)
             df = collector.collect_cities_current(CITIES)
             if df.empty:
-                st.error("Could not fetch live data. Check your token or try sample data.")
+                st.warning("Live API unavailable — falling back to sample data.")
                 df = load_or_generate_data()
+            else:
+                st.info("Showing live data from OpenWeatherMap API")
+        st.caption("Live data may have fewer pollutant fields than sample data.")
     else:
         df = load_or_generate_data()
+        st.caption("📊 Showing demo data with all pollutants. Toggle 'Live API' in the sidebar for real-time readings.")
 
     if page == "📊 Overview":
         render_overview(df)
