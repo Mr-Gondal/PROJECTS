@@ -6,6 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
 from src.sample_data import generate_sample_data
+from src.data_collector import AirQualityCollector
 from src.analyzer import AirQualityAnalyzer
 from src.model import AirQualityPredictor, train_all_models
 from src.config import CITIES, TARGET_POLLUTANTS
@@ -503,8 +504,9 @@ def main():
         st.markdown("---")
         st.markdown("**Data Source**")
         use_api = st.toggle("Live API (requires token)", value=False)
+        api_token = ""
         if use_api:
-            token = st.text_input("AQI API Token", type="password")
+            api_token = st.text_input("AQI API Token", type="password")
         st.markdown("---")
         st.markdown(
             '<div style="font-size:0.8rem; color:#6c757d; text-align:center;">'
@@ -512,7 +514,15 @@ def main():
             unsafe_allow_html=True,
         )
 
-    df = load_or_generate_data()
+    if use_api and api_token:
+        with st.spinner("Fetching live AQI data from WAQI API..."):
+            collector = AirQualityCollector(token=api_token)
+            df = collector.collect_cities_current(CITIES)
+            if df.empty:
+                st.error("Could not fetch live data. Check your token or try sample data.")
+                df = load_or_generate_data()
+    else:
+        df = load_or_generate_data()
 
     if page == "📊 Overview":
         render_overview(df)

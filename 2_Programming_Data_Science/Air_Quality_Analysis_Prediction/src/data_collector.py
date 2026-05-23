@@ -23,9 +23,15 @@ class AirQualityCollector:
 
     def parse_aqi_response(self, raw: dict, city: str) -> dict:
         iaqi = raw.get("iaqi", {})
+        time_raw = raw.get("time", {})
+        ts = time_raw.get("s") or time_raw.get("iso")
+        if isinstance(ts, str):
+            timestamp = pd.to_datetime(ts)
+        else:
+            timestamp = pd.Timestamp.now()
         record = {
             "city": city,
-            "timestamp": datetime.fromtimestamp(raw.get("time", {}).get("s", 0)),
+            "timestamp": timestamp,
             "aqi": raw.get("aqi"),
         }
         for pollutant in ["pm25", "pm10", "no2", "so2", "co", "o3"]:
