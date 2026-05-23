@@ -13,20 +13,29 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 MODELS_DIR = BASE_DIR / "models"
 FIGURES_DIR = BASE_DIR / "figures"
 
-CITIES = ["Lahore", "Karachi", "Islamabad", "Peshawar"]
-AQI_API_BASE_URL = "https://api.waqi.info/feed/{city}/"
+CITIES = ["Lahore", "Karachi", "Islamabad", "Peshawar", "Quetta"]
+
+CITY_COORDS = {
+    "Lahore":    (31.5204, 74.3587),
+    "Karachi":   (24.8607, 67.0011),
+    "Islamabad": (33.6844, 73.0479),
+    "Peshawar":  (34.0151, 71.5249),
+    "Quetta":    (30.1798, 66.9750),
+}
+
+OWM_API_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
 
 def get_api_token() -> str:
-    token = os.getenv("AQI_API_TOKEN", "")
+    token = os.getenv("OWM_API_TOKEN", "")
     if not token:
         try:
             import streamlit as st
-            token = st.secrets.get("AQI_API_TOKEN", "")
+            token = st.secrets.get("OWM_API_TOKEN", "")
         except Exception:
             pass
     return token
 
-AQI_API_TOKEN = get_api_token()
+OWM_API_TOKEN = get_api_token()
 
 TARGET_POLLUTANTS = ["pm25", "pm10", "no2", "so2", "co", "o3"]
 

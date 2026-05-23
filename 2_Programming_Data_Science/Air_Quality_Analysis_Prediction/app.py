@@ -485,7 +485,7 @@ def render_about():
     - Gradient Boosting Regressor (R² ~0.87)
     - Linear Regression (R² ~0.90)
 
-    [📂 View on GitHub](https://github.com) | [📊 Dataset: WAQI API](https://waqi.info)
+    [📂 View on GitHub](https://github.com) | [📊 Data: OpenWeatherMap API](https://openweathermap.org/api/air-pollution)
     """)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -503,10 +503,10 @@ def main():
         )
         st.markdown("---")
         st.markdown("**Data Source**")
-        use_api = st.toggle("Live API (requires token)", value=False)
+        use_api = st.toggle("Live API (OpenWeatherMap)", value=False)
         api_token = ""
         if use_api:
-            api_token = st.text_input("AQI API Token", type="password")
+            api_token = st.text_input("OWM API Key", type="password")
         st.markdown("---")
         st.markdown(
             '<div style="font-size:0.8rem; color:#6c757d; text-align:center;">'
@@ -515,7 +515,7 @@ def main():
         )
 
     if use_api and api_token:
-        with st.spinner("Fetching live AQI data from WAQI API..."):
+        with st.spinner("Fetching live AQI data from OpenWeatherMap..."):
             collector = AirQualityCollector(token=api_token)
             df = collector.collect_cities_current(CITIES)
             if df.empty:
