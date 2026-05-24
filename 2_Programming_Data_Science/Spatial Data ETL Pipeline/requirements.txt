@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+geopandas
+shapely
+plotly
+pyproj
+folium
+streamlit-folium
+tqdm
+click
