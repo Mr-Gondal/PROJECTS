@@ -26,7 +26,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -170,8 +169,42 @@
     .eq-popup .stat-value { font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
     /* Responsive */
+    /* Right sidebar toggle button (visible below 1280px) */
+    .sidebar-toggle {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #f43f5e;
+      border: none;
+      color: white;
+      box-shadow: 0 4px 20px rgba(244, 63, 94, 0.4);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+    .sidebar-toggle:hover { transform: scale(1.1); }
+
     @media (max-width: 1280px) {
-      .right-sidebar { display: none; }
+      .right-sidebar {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        z-index: 9998;
+        height: 100vh;
+        transition: right 0.35s ease;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+      }
+      .right-sidebar.open { right: 0; }
+      .sidebar-toggle { display: flex; }
+      .sidebar-toggle.open { display: none; }
+      /* Close button inside right sidebar */
+      .sidebar-close { display: flex !important; }
     }
     @media (max-width: 768px) {
       .left-sidebar { 
@@ -322,6 +355,14 @@
       <div id="alertsList" class="max-h-32 overflow-y-auto p-2 space-y-1"></div>
     </div>
 
+    <!-- Error Message -->
+    <div id="fetchError" class="hidden p-3 mx-2 mt-2 bg-[#f43f5e]/10 border border-[#f43f5e]/30 rounded-lg">
+      <div class="flex items-center gap-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-[#f43f5e] flex-shrink-0"></i>
+        <p class="text-[11px] text-[#f43f5e]">Failed to fetch seismic data. Check your connection and try again.</p>
+      </div>
+    </div>
+
     <!-- Earthquake List -->
     <div class="flex-1 overflow-hidden flex flex-col">
       <div class="p-3 border-b border-[#1e293b] flex items-center justify-between">
@@ -402,12 +443,17 @@
   <aside class="right-sidebar w-[380px] min-w-[340px] border-l border-[#1e293b] flex flex-col bg-[#0f172a] overflow-y-auto">
     
     <!-- Analytics Header -->
-    <div class="p-4 border-b border-[#1e293b]">
-      <div class="flex items-center gap-2">
-        <i data-lucide="bar-chart-3" class="w-4 h-4 text-[#f43f5e]"></i>
-        <h2 class="text-sm font-bold uppercase tracking-wider">Seismic Analytics</h2>
+    <div class="p-4 border-b border-[#1e293b] flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-4 h-4 text-[#f43f5e]"></i>
+          <h2 class="text-sm font-bold uppercase tracking-wider">Seismic Analytics</h2>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-0.5">Real-time statistical analysis</p>
       </div>
-      <p class="text-[10px] text-slate-500 mt-0.5">Real-time statistical analysis</p>
+      <button onclick="toggleRightSidebar()" class="sidebar-close hidden w-8 h-8 rounded-lg bg-[#1e293b] border border-[#334155] items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
 
     <!-- Stat Cards -->
@@ -513,10 +559,15 @@
     <!-- Footer -->
     <div class="p-4 border-t border-[#1e293b] mt-auto">
       <p class="text-[9px] text-slate-600 text-center">Data: USGS Earthquake Hazards Program</p>
+      <p class="text-[9px] text-slate-600 text-center mt-0.5">Fault lines are schematic — not for hazard assessment</p>
       <p class="text-[9px] text-slate-600 text-center mt-0.5">SeismoTrack Pakistan v2.0 — WebGIS Dashboard</p>
     </div>
   </aside>
 </div>
+
+<button id="sidebarToggleBtn" class="sidebar-toggle" onclick="toggleRightSidebar()">
+  <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+</button>
 
 <script>
 // ==========================================
@@ -530,8 +581,9 @@ const CONFIG = {
     maxlatitude: 38,
     minlongitude: 60,
     maxlongitude: 80,
-    starttime: '2024-01-01',
-    orderby: 'time'
+    starttime: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    orderby: 'time',
+    limit: 500
   },
   MAP_CENTER: [30.3753, 69.3451],
   MAP_ZOOM: 5,
@@ -761,9 +813,18 @@ async function fetchEarthquakes() {
     updateLastUpdated();
     checkImpactAlerts();
 
+    document.getElementById('fetchError').classList.add('hidden');
+
   } catch (err) {
     console.error('Fetch error:', err);
     refreshBtn.innerHTML = '<i data-lucide="alert-circle" class="w-3.5 h-3.5"></i><span>Error - Retry</span>';
+    document.getElementById('fetchError').classList.remove('hidden');
+    document.getElementById('eqList').innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
+        <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
+        <p>Connection failed</p>
+        <p class="text-[10px] text-slate-600 mt-1">Click "Refresh Data" to retry</p>
+      </div>`;
     lucide.createIcons();
     return;
   }
@@ -937,6 +998,7 @@ function updateList() {
       <div class="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
         <i data-lucide="search-x" class="w-8 h-8 mb-2 opacity-50"></i>
         <p>No earthquakes match filters</p>
+        <p class="text-[10px] text-slate-600 mt-1">Try lowering the magnitude slider or expanding the time range</p>
       </div>`;
     lucide.createIcons();
     return;
@@ -1355,6 +1417,13 @@ function stopAutoRefresh() {
     autoRefreshTimer = null;
   }
   document.getElementById('refreshProgress').style.width = '0%';
+}
+
+function toggleRightSidebar() {
+  const sidebar = document.querySelector('.right-sidebar');
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  sidebar.classList.toggle('open');
+  toggleBtn.classList.toggle('open', sidebar.classList.contains('open'));
 }
 
 function updateLastUpdated() {
