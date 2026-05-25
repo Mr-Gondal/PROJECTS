@@ -1,0 +1,31 @@
+district,province,road_density_km_km2,total_roads_km,hospitals,basic_health_units,schools_total,universities,electricity_access_pct,internet_access_pct,source,quality_flag,quality_notes
+Lahore,Punjab,0.953,1688.7,89,367,1826,36,94.0,53.0,NHA_HEC_Synthetic_2023,WARN,hospitals=89.00 is an outlier (IQR); basic_health_units=367.00 is an outlier (IQR); schools_total=1826.00 is an outlier (IQR); universities=36.00 is an outlier (IQR)
+Faisalabad,Punjab,0.798,4673.1,27,100,520,12,89.0,55.3,NHA_HEC_Synthetic_2023,PASS,OK
+Rawalpindi,Punjab,1.124,5941.5,15,67,319,6,87.2,52.2,NHA_HEC_Synthetic_2023,PASS,OK
+Multan,Punjab,1.406,5230.3,11,47,269,6,91.5,46.9,NHA_HEC_Synthetic_2023,PASS,OK
+Gujranwala,Punjab,0.534,1934.1,15,53,287,6,84.6,55.2,NHA_HEC_Synthetic_2023,PASS,OK
+Sialkot,Punjab,1.017,3067.3,26,116,547,12,92.3,58.7,NHA_HEC_Synthetic_2023,PASS,OK
+Bahawalpur,Punjab,1.866,46332.8,28,106,513,11,92.1,57.5,NHA_HEC_Synthetic_2023,WARN,total_roads_km=46332.80 is an outlier (IQR)
+Sargodha,Punjab,1.253,7335.1,24,106,492,11,91.6,51.3,NHA_HEC_Synthetic_2023,PASS,OK
+Gujrat,Punjab,0.829,2646.2,22,94,435,8,92.8,49.2,NHA_HEC_Synthetic_2023,PASS,OK
+Sahiwal,Punjab,0.494,1581.3,14,56,298,8,92.3,53.5,NHA_HEC_Synthetic_2023,PASS,OK
+Karachi,Sindh,1.39,4902.5,83,324,1620,33,78.1,51.4,NHA_HEC_Synthetic_2023,WARN,hospitals=83.00 is an outlier (IQR); basic_health_units=324.00 is an outlier (IQR); schools_total=1620.00 is an outlier (IQR); universities=33.00 is an outlier (IQR)
+Hyderabad,Sindh,1.459,1467.8,7,33,186,3,81.9,43.5,NHA_HEC_Synthetic_2023,PASS,OK
+Sukkur,Sindh,0.323,1668.3,6,24,77,3,72.4,47.6,NHA_HEC_Synthetic_2023,PASS,OK
+Larkana,Sindh,1.295,10020.7,7,39,160,3,81.8,51.9,NHA_HEC_Synthetic_2023,PASS,OK
+Nawabshah,Sindh,0.907,3674.3,10,37,143,4,86.1,37.3,NHA_HEC_Synthetic_2023,PASS,OK
+Peshawar,KPK,0.714,897.5,16,53,266,6,75.5,51.5,NHA_HEC_Synthetic_2023,PASS,OK
+Mardan,KPK,0.271,442.3,11,48,224,5,71.6,50.4,NHA_HEC_Synthetic_2023,PASS,OK
+Abbottabad,KPK,0.221,434.7,4,20,134,2,84.3,53.6,NHA_HEC_Synthetic_2023,PASS,OK
+Swat,KPK,0.783,4178.9,11,50,223,6,80.9,46.9,NHA_HEC_Synthetic_2023,PASS,OK
+Mansehra,KPK,0.36,1648.4,10,23,135,2,78.5,48.4,NHA_HEC_Synthetic_2023,PASS,OK
+Quetta,Balochistan,0.449,1191.2,3,14,63,1,52.9,42.9,NHA_HEC_Synthetic_2023,PASS,OK
+Turbat,Balochistan,0.662,29670.2,2,15,27,1,50.7,41.6,NHA_HEC_Synthetic_2023,WARN,total_roads_km=29670.20 is an outlier (IQR)
+Khuzdar,Balochistan,0.385,14529.5,2,15,45,1,53.9,31.3,NHA_HEC_Synthetic_2023,WARN,total_roads_km=14529.50 is an outlier (IQR)
+Chaman,Balochistan,0.219,1807.4,1,2,7,1,50.4,34.4,NHA_HEC_Synthetic_2023,PASS,OK
+Gwadar,Balochistan,0.249,3146.6,2,5,21,0,53.6,27.5,NHA_HEC_Synthetic_2023,WARN,internet_access_pct=27.50 is an outlier (IQR)
+Islamabad,ICT,0.679,615.2,12,47,234,5,98.6,56.9,NHA_HEC_Synthetic_2023,PASS,OK
+Gilgit,GB,0.597,25074.0,1,4,18,1,56.7,35.8,NHA_HEC_Synthetic_2023,WARN,total_roads_km=25074.00 is an outlier (IQR)
+Skardu,GB,0.388,21340.0,1,2,21,1,61.5,48.5,NHA_HEC_Synthetic_2023,WARN,total_roads_km=21340.00 is an outlier (IQR)
+Muzaffarabad,AJK,0.567,931.0,2,18,48,2,68.4,43.6,NHA_HEC_Synthetic_2023,PASS,OK
+Mirpur,AJK,0.73,737.3,3,12,48,1,69.4,53.2,NHA_HEC_Synthetic_2023,PASS,OK

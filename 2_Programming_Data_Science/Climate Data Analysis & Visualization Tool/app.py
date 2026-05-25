@@ -706,7 +706,7 @@ with tabs[4]:
         # Radar chart for climate profile comparison
         st.markdown('<div class="section-header">🕸️ Normalized Climate Profile Radar</div>', unsafe_allow_html=True)
 
-        radar_metrics = ["avg_temp", "precip_total", "humidity_avg", "wind_avg", "temp_max_avg"]
+        radar_metrics = ["temp_avg", "precip_total", "humidity_avg", "wind_avg", "temp_max_avg"]
         radar_labels = ["Avg Temp", "Annual Precip", "Humidity", "Wind Speed", "Max Temp"]
 
         radar_data = (
