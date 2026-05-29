@@ -1,0 +1,46 @@
+project:
+  name: climate-agriculture
+  baseline_years: [1990, 2020]
+  projection_years: [2050, 2070]
+  climate_scenarios: ["ssp245", "ssp585"]
+
+paths:
+  raw_data_dir: data/raw
+  processed_data_dir: data/processed
+  shapefile_dir: data/shapefile
+  figure_dir: output/figures
+  map_dir: output/maps
+  report_dir: output/report
+
+inputs:
+  district_climate_csv: data/raw/district_climate_timeseries.csv
+  district_boundaries: data/shapefile/pakistan_districts.geojson
+
+climate_columns:
+  district: district
+  province: province
+  year: year
+  scenario: scenario
+  temperature_c: temperature_c
+  precipitation_mm: precipitation_mm
+
+crops:
+  wheat:
+    optimal_temp_c: [10, 20]
+    marginal_temp_c: [5, 24]
+    optimal_precip_mm: [250, 600]
+    marginal_precip_mm: [180, 750]
+  cotton:
+    optimal_temp_c: [21, 32]
+    marginal_temp_c: [18, 36]
+    optimal_precip_mm: [500, 900]
+    marginal_precip_mm: [350, 1100]
+  rice:
+    optimal_temp_c: [20, 35]
+    marginal_temp_c: [18, 38]
+    optimal_precip_mm: [1000, 2000]
+    marginal_precip_mm: [700, 2400]
+
+weights:
+  temperature: 0.55
+  precipitation: 0.45
