@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deforestation Detection · Northern Pakistan | Haris Hussain</title>
+  <meta name="description" content="Satellite-based deforestation detection and visualization dashboard for KPK and Gilgit-Baltistan regions of Northern Pakistan. Forest cover change analysis 2015–2024." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #020c06;
+      --bg2: #041208;
+      --bg3: #071a0c;
+      --bg4: #0a2213;
+      --panel: rgba(10,30,18,0.85);
+      --panel-border: rgba(0,255,136,0.12);
+      --emerald: #00ff88;
+      --emerald-dim: #00cc6a;
+      --emerald-glow: rgba(0,255,136,0.25);
+      --orange: #ff6600;
+      --orange-dim: #cc5200;
+      --orange-glow: rgba(255,102,0,0.25);
+      --brown: #cc8800;
+      --brown-dim: #996600;
+      --brown-glow: rgba(204,136,0,0.22);
+      --red-alert: #ff2244;
+      --text: #cde8d8;
+      --text-dim: #7aad8e;
+      --text-faint: #3d7050;
+      --forest: #1a7a3c;
+      --forest-bright: #23a050;
+      --deforested: #b87333;
+      --deforested-bright: #d4884a;
+      --non-forest: #3a3e42;
+      --changed: #ff2244;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Particle Canvas ── */
+    #particle-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.45;
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Hero Header ── */
+    .hero {
+      padding: 60px 0 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 30px;
+      padding: 6px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--emerald);
+      letter-spacing: 0.08em;
+      margin-bottom: 24px;
+      animation: fadeSlideDown 0.8s ease both;
+    }
+
+    .hero-badge .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+      animation: pulse 1.5s ease infinite;
+    }
+
+    .hero h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 5vw, 58px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      animation: fadeSlideDown 0.9s ease 0.1s both;
+    }
+
+    .hero h1 .line1 {
+      display: block;
+      background: linear-gradient(135deg, var(--emerald) 0%, #00ffcc 50%, var(--emerald-dim) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 0 30px rgba(0,255,136,0.4));
+    }
+
+    .hero h1 .line2 {
+      display: block;
+      color: var(--text);
+      font-size: 0.6em;
+      font-weight: 400;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 10px;
+      color: var(--text-dim);
+    }
+
+    .hero-subtitle {
+      max-width: 680px;
+      margin: 20px auto 0;
+      color: var(--text-dim);
+      font-size: 15px;
+      line-height: 1.7;
+      animation: fadeSlideDown 1s ease 0.2s both;
+    }
+
+    .hero-meta {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+      animation: fadeSlideDown 1s ease 0.3s both;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .hero-meta-item .icon { font-size: 16px; }
+
+    .scan-line {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--emerald), var(--orange), var(--emerald), transparent);
+      margin: 40px 0;
+      position: relative;
+      overflow: hidden;
+      animation: fadeSlideDown 1s ease 0.4s both;
+    }
+
+    .scan-line::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+      animation: scanMove 3s linear infinite;
+    }
+
+    /* ── Section Layout ── */
+    .section { margin-bottom: 48px; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--emerald);
+    }
+
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-faint);
+      border: 1px solid var(--text-faint);
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--emerald-glow), transparent);
+    }
+
+    /* ── Panel / Card ── */
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--emerald-glow), transparent);
+    }
+
+    .panel:hover {
+      border-color: rgba(0,255,136,0.25);
+      box-shadow: 0 0 40px rgba(0,255,136,0.06);
+    }
+
+    .panel-orange {
+      border-color: rgba(255,102,0,0.15);
+    }
+
+    .panel-orange::before {
+      background: linear-gradient(90deg, transparent, var(--orange-glow), transparent);
+    }
+
+    .panel-orange:hover {
+      border-color: rgba(255,102,0,0.3);
+      box-shadow: 0 0 40px rgba(255,102,0,0.06);
+    }
+
+    .panel-brown {
+      border-color: rgba(204,136,0,0.15);
+    }
+
+    .panel-brown::before {
+      background: linear-gradient(90deg, transparent, var(--brown-glow), transparent);
+    }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: rgba(10,30,18,0.9);
+      border: 1px solid rgba(0,255,136,0.1);
+      border-radius: 12px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+      border-color: rgba(0,255,136,0.3);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(0,255,136,0.08);
+    }
+
+    .stat-card .corner {
+      position: absolute;
+      top: 0; right: 0;
+      width: 40px; height: 40px;
+      border-top: 2px solid var(--emerald-dim);
+      border-right: 2px solid var(--emerald-dim);
+      border-radius: 0 12px 0 0;
+      opacity: 0.4;
+    }
+
+    .stat-card .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 10px;
+    }
+
+    .stat-card .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--emerald);
+    }
+
+    .stat-card .stat-value.orange { color: var(--orange); }
+    .stat-card .stat-value.brown { color: var(--brown); }
+    .stat-card .stat-value.red { color: var(--red-alert); }
+
+    .stat-card .stat-unit {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    .stat-card .stat-trend {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .trend-down { color: var(--red-alert); }
+    .trend-up { color: var(--emerald); }
+
+    /* ── Map Comparison ── */
+    .map-compare-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .map-canvases {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(0,255,136,0.15);
+      background: #010a04;
+      cursor: col-resize;
+      user-select: none;
+    }
+
+    #canvas-2015, #canvas-2024 {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    #canvas-2024 {
+      clip-path: inset(0 0 0 50%);
+      transition: clip-path 0s;
+    }
+
+    .map-divider {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 100%;
+      background: #fff;
+      z-index: 10;
+      cursor: col-resize;
+      box-shadow: 0 0 12px rgba(255,255,255,0.6);
+    }
+
+    .map-divider-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px; height: 36px;
+      background: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: #000;
+      box-shadow: 0 0 18px rgba(255,255,255,0.5);
+      cursor: col-resize;
+    }
+
+    .map-year-label {
+      position: absolute;
+      top: 14px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 6px;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    .label-2015 {
+      left: 14px;
+      background: rgba(26,122,60,0.7);
+      border: 1px solid var(--emerald-dim);
+      color: var(--emerald);
+    }
+
+    .label-2024 {
+      right: 14px;
+      background: rgba(50,20,0,0.7);
+      border: 1px solid var(--orange);
+      color: var(--orange);
+    }
+
+    .map-legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(10,30,18,0.6);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .legend-dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .map-slider-label {
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-faint);
+      letter-spacing: 0.08em;
+      margin-top: 4px;
+    }
+
+    /* ── Charts Grid ── */
+    .charts-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .charts-grid-3 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .chart-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--emerald);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .chart-title .icon { font-size: 16px; }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+    }
+
+    /* ── NDVI Panel ── */
+    .ndvi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .ndvi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .ndvi-zone {
+      background: rgba(10,30,18,0.6);
+      border: 1px solid rgba(0,255,136,0.1);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .ndvi-zone:hover {
+      border-color: rgba(0,255,136,0.3);
+      transform: translateY(-2px);
+    }
+
+    .ndvi-zone .zone-name {
+      font-size: 11px;
+      color: var(--text-faint);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .ndvi-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .ndvi-delta {
+      font-size: 13px;
+      margin-top: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Satellite Panel ── */
+    .sat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+
+    .sat-item {
+      background: rgba(10,30,18,0.5);
+      border: 1px solid rgba(0,255,136,0.08);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .sat-item .sat-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 6px;
+    }
+
+    .sat-item .sat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--emerald);
+      font-weight: 500;
+    }
+
+    .band-display {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .band-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,255,136,0.15);
+      background: rgba(0,255,136,0.04);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .band-swatch {
+      width: 12px; height: 12px;
+      border-radius: 2px;
+    }
+
+    /* ── Alert Panel ── */
+    .alerts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .alert-item {
+      display: flex;
+      gap: 14px;
+      padding: 16px;
+      border-radius: 10px;
+      border-left: 3px solid;
+      background: rgba(10,20,14,0.7);
+      transition: all 0.3s;
+      animation: alertSlideIn 0.5s ease both;
+    }
+
+    .alert-item:hover {
+      background: rgba(20,40,25,0.9);
+      transform: translateX(4px);
+    }
+
+    .alert-critical { border-color: var(--red-alert); }
+    .alert-high { border-color: var(--orange); }
+    .alert-moderate { border-color: var(--brown); }
+
+    .alert-icon { font-size: 20px; flex-shrink: 0; line-height: 1; }
+
+    .alert-body { flex: 1; }
+
+    .alert-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .alert-title.critical { color: var(--red-alert); }
+    .alert-title.high { color: var(--orange); }
+    .alert-title.moderate { color: var(--brown); }
+
+    .alert-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-faint);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .severity-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      flex-shrink: 0;
+      align-self: flex-start;
+    }
+
+    .badge-critical { background: rgba(255,34,68,0.15); color: var(--red-alert); border: 1px solid rgba(255,34,68,0.3); }
+    .badge-high { background: rgba(255,102,0,0.15); color: var(--orange); border: 1px solid rgba(255,102,0,0.3); }
+    .badge-moderate { background: rgba(204,136,0,0.15); color: var(--brown); border: 1px solid rgba(204,136,0,0.3); }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 60px;
+      padding: 32px 0 20px;
+      border-top: 1px solid rgba(0,255,136,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: gap;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .footer-left .footer-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      color: var(--emerald);
+      font-weight: 700;
+    }
+
+    .footer-left .footer-role {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 4px;
+    }
+
+    .footer-right {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-faint);
+      text-align: right;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--emerald); }
+      50% { opacity: 0.4; box-shadow: 0 0 3px var(--emerald); }
+    }
+
+    @keyframes scanMove {
+      0% { left: -100%; }
+      100% { left: 200%; }
+    }
+
+    @keyframes countUp {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes alertSlideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes changedPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,34,68,0.7); }
+      50% { box-shadow: 0 0 0 3px rgba(255,34,68,0); }
+    }
+
+    @keyframes borderGlow {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    /* ── Data Ticker ── */
+    .data-ticker {
+      background: rgba(0,20,10,0.8);
+      border: 1px solid rgba(0,255,136,0.1);
+      border-radius: 8px;
+      padding: 10px 16px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ticker-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--emerald);
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: rgba(0,255,136,0.08);
+      padding: 4px 10px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .ticker-scroll {
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .ticker-inner {
+      display: flex;
+      gap: 48px;
+      animation: tickerMove 30s linear infinite;
+      white-space: nowrap;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .ticker-inner span { color: var(--emerald); }
+
+    @keyframes tickerMove {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── NDVI Bar ── */
+    .ndvi-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .ndvi-bar-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      width: 80px;
+      flex-shrink: 0;
+    }
+
+    .ndvi-bar-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .ndvi-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+
+    .ndvi-bar-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      width: 44px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 26px; }
+      .hero-meta { gap: 14px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .ndvi-grid { grid-template-columns: repeat(2, 1fr); }
+      .map-canvases { height: 240px; }
+      .wrapper { padding: 0 14px 60px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Particle background -->
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="wrapper">
+
+    <!-- ══ HERO ══ -->
+    <header class="hero">
+      <div class="hero-badge">
+        <div class="dot"></div>
+        LIVE MONITORING · KPK / GILGIT-BALTISTAN · 2015–2024
+      </div>
+
+      <h1>
+        <span class="line1">Deforestation Detection</span>
+        <span class="line2">Northern Pakistan · Satellite Imagery Analysis</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Multi-temporal land cover change analysis using Landsat-8/9 OLI satellite data.
+        Monitoring forest cover dynamics in KPK and Gilgit-Baltistan through NDVI differencing and spectral classification.
+      </p>
+
+      <div class="hero-meta">
+        <div class="hero-meta-item"><span class="icon">🛰️</span> Landsat-8/9 OLI · Sentinel-2</div>
+        <div class="hero-meta-item"><span class="icon">📍</span> 34°N–37°N, 70°E–76°E</div>
+        <div class="hero-meta-item"><span class="icon">📅</span> 2015–2024 Time Series</div>
+        <div class="hero-meta-item"><span class="icon">🗺️</span> 30m Spatial Resolution</div>
+        <div class="hero-meta-item"><span class="icon">🎓</span> Haris Hussain · Space Science · UoP</div>
+      </div>
+    </header>
+
+    <!-- Data Ticker -->
+    <div class="data-ticker">
+      <div class="ticker-label">⚡ DATA FEED</div>
+      <div class="ticker-scroll">
+        <div class="ticker-inner" id="ticker-inner">
+          <span>NDVI Swat:</span> 0.71→0.42 &nbsp;|&nbsp;
+          <span>Forest Loss:</span> 847 km² &nbsp;|&nbsp;
+          <span>Kohistan Alert:</span> CRITICAL &nbsp;|&nbsp;
+          <span>Last Pass:</span> Landsat-9 2024-03-18 &nbsp;|&nbsp;
+          <span>Cloud Cover:</span> 12% &nbsp;|&nbsp;
+          <span>Accuracy:</span> 94.3% &nbsp;|&nbsp;
+          <span>Net Change:</span> -18.4% &nbsp;|&nbsp;
+          <span>Rate:</span> 94 km²/yr &nbsp;|&nbsp;
+          <span>NDVI Swat:</span> 0.71→0.42 &nbsp;|&nbsp;
+          <span>Forest Loss:</span> 847 km² &nbsp;|&nbsp;
+          <span>Kohistan Alert:</span> CRITICAL &nbsp;|&nbsp;
+          <span>Last Pass:</span> Landsat-9 2024-03-18 &nbsp;|&nbsp;
+          <span>Cloud Cover:</span> 12% &nbsp;|&nbsp;
+          <span>Accuracy:</span> 94.3% &nbsp;|&nbsp;
+          <span>Net Change:</span> -18.4% &nbsp;|&nbsp;
+          <span>Rate:</span> 94 km²/yr &nbsp;|&nbsp;
+        </div>
+      </div>
+    </div>
+
+    <div class="scan-line"></div>
+
+    <!-- ══ SECTION 1: STATS ══ -->
+    <section class="section" id="sec-stats">
+      <div class="section-header">
+        <div class="section-num">01</div>
+        <h2>Change Detection Statistics</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Forest Cover 2015</div>
+          <div class="stat-value" id="stat-2015">0</div>
+          <div class="stat-unit">km² (baseline)</div>
+          <div class="stat-trend trend-up">📊 Reference year</div>
+        </div>
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Forest Cover 2024</div>
+          <div class="stat-value orange" id="stat-2024">0</div>
+          <div class="stat-unit">km² (current)</div>
+          <div class="stat-trend trend-down">↓ Significant decline</div>
+        </div>
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Area Deforested</div>
+          <div class="stat-value red" id="stat-defor">0</div>
+          <div class="stat-unit">km² total loss</div>
+          <div class="stat-trend trend-down">↓ 2015–2024</div>
+        </div>
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Area Reforested</div>
+          <div class="stat-value" id="stat-refor">0</div>
+          <div class="stat-unit">km² regrowth</div>
+          <div class="stat-trend trend-up">↑ Recovery patches</div>
+        </div>
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Net Forest Change</div>
+          <div class="stat-value red" id="stat-net">0</div>
+          <div class="stat-unit">% net loss</div>
+          <div class="stat-trend trend-down">↓ Critical threshold</div>
+        </div>
+        <div class="stat-card">
+          <div class="corner"></div>
+          <div class="stat-label">Annual Deforestation</div>
+          <div class="stat-value brown" id="stat-annual">0</div>
+          <div class="stat-unit">km²/year rate</div>
+          <div class="stat-trend trend-down">↓ 9yr avg rate</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 2: MAP COMPARISON ══ -->
+    <section class="section" id="sec-map">
+      <div class="section-header">
+        <div class="section-num">02</div>
+        <h2>Before / After Map Comparison</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="panel">
+        <div class="map-compare-wrapper">
+          <div class="map-canvases" id="map-compare">
+            <canvas id="canvas-2015"></canvas>
+            <canvas id="canvas-2024"></canvas>
+
+            <div class="map-divider" id="map-divider">
+              <div class="map-divider-handle">⇔</div>
+            </div>
+
+            <div class="map-year-label label-2015">📅 2015 · Baseline</div>
+            <div class="map-year-label label-2024">📅 2024 · Current</div>
+          </div>
+
+          <p class="map-slider-label">◀ DRAG DIVIDER TO COMPARE YEARS ▶</p>
+
+          <div class="map-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#23a050;"></div>
+              Dense Forest
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#1a5c35;"></div>
+              Sparse Forest
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#c8864a;"></div>
+              Deforested Land
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#4a5058;"></div>
+              Non-Forest / Bare
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#ff2244; border: 1px solid #ff2244;"></div>
+              Changed Cells (2024)
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#8fc8ff;"></div>
+              Water / Snow / Glacier
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 3: TIMELINE CHART ══ -->
+    <section class="section" id="sec-timeline">
+      <div class="section-header">
+        <div class="section-num">03</div>
+        <h2>Yearly Forest Cover Timeline (2015–2024)</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="panel">
+        <div class="chart-title"><span class="icon">📈</span> Forest Cover Trend · Annual Time Series</div>
+        <div class="chart-container" style="height: 320px;">
+          <canvas id="chart-timeline"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 4 & 5: DISTRICT + DONUT ══ -->
+    <section class="section" id="sec-district">
+      <div class="section-header">
+        <div class="section-num">04–05</div>
+        <h2>District Comparison · Cause Analysis</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="charts-grid-3">
+        <div class="panel panel-orange">
+          <div class="chart-title"><span class="icon">🗺️</span> Forest Loss % by District</div>
+          <div class="chart-container" style="height: 280px;">
+            <canvas id="chart-district"></canvas>
+          </div>
+        </div>
+
+        <div class="panel panel-brown">
+          <div class="chart-title"><span class="icon">🔍</span> Primary Causes of Deforestation</div>
+          <div class="chart-container" style="height: 280px;">
+            <canvas id="chart-causes"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 6: SATELLITE DATA ══ -->
+    <section class="section" id="sec-satellite">
+      <div class="section-header">
+        <div class="section-num">06</div>
+        <h2>Satellite Data Panel</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="panel">
+        <div class="sat-grid">
+          <div class="sat-item">
+            <div class="sat-key">Primary Sensor</div>
+            <div class="sat-val">Landsat-8/9 OLI</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Secondary Sensor</div>
+            <div class="sat-val">Sentinel-2 MSI</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Spatial Resolution</div>
+            <div class="sat-val">30 m (Landsat) · 10 m (S-2)</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Temporal Resolution</div>
+            <div class="sat-val">16 days (Landsat)</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Data Source</div>
+            <div class="sat-val">USGS EarthExplorer</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Processing Platform</div>
+            <div class="sat-val">Google Earth Engine</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Classification Method</div>
+            <div class="sat-val">Random Forest · SVM</div>
+          </div>
+          <div class="sat-item">
+            <div class="sat-key">Overall Accuracy</div>
+            <div class="sat-val" style="color:var(--emerald);">94.3% · Kappa: 0.91</div>
+          </div>
+        </div>
+
+        <div class="band-display">
+          <div class="band-chip">
+            <div class="band-swatch" style="background:#cc4444;"></div>
+            B4 — Red (0.64–0.67 μm) · Vegetation stress
+          </div>
+          <div class="band-chip">
+            <div class="band-swatch" style="background:#448844;"></div>
+            B5 — NIR (0.85–0.88 μm) · Vegetation biomass
+          </div>
+          <div class="band-chip">
+            <div class="band-swatch" style="background:#4477cc;"></div>
+            B3 — Green (0.53–0.59 μm) · Forest vigor
+          </div>
+          <div class="band-chip">
+            <div class="band-swatch" style="background:#888888;"></div>
+            B6 — SWIR1 (1.57–1.65 μm) · Moisture content
+          </div>
+        </div>
+
+        <div style="margin-top:18px; padding:14px 16px; background:rgba(0,255,136,0.04); border:1px solid rgba(0,255,136,0.1); border-radius:8px;">
+          <div style="font-family:'Orbitron',sans-serif; font-size:11px; color:var(--emerald); margin-bottom:8px; letter-spacing:0.08em;">FALSE-COLOR COMPOSITE (NIR-Red-Green)</div>
+          <p style="font-size:13px; color:var(--text-dim); line-height:1.7;">
+            The false-color composite assigns Band 5 (NIR) to the red channel, Band 4 (Red) to green, and Band 3 (Green) to blue.
+            Healthy, dense vegetation appears in <strong style="color:#ff4444;">bright red</strong>, sparse vegetation in lighter pink,
+            bare/deforested land appears in <strong style="color:#c8864a;">tan-brown</strong>, urban areas in cyan, and
+            water bodies in <strong style="color:#4477cc;">dark blue</strong>. This composite maximizes contrast
+            between forested and non-forested areas, enabling automated change detection with &gt;92% accuracy.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 7: NDVI ══ -->
+    <section class="section" id="sec-ndvi">
+      <div class="section-header">
+        <div class="section-num">07</div>
+        <h2>NDVI Change Analysis by Zone</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="charts-grid-2">
+        <div class="panel">
+          <div class="chart-title"><span class="icon">🌿</span> NDVI Values · 2015 vs 2024 Comparison</div>
+          <div class="chart-container" style="height: 260px;">
+            <canvas id="chart-ndvi"></canvas>
+          </div>
+        </div>
+
+        <div class="panel panel-orange">
+          <div class="chart-title"><span class="icon">📉</span> NDVI Zone Metrics &amp; Delta</div>
+          <div id="ndvi-zones-panel" style="margin-top: 8px;">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 8: ALERTS ══ -->
+    <section class="section" id="sec-alerts">
+      <div class="section-header">
+        <div class="section-num">08</div>
+        <h2>Real-Time Alert Feed</h2>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="panel panel-orange">
+        <div class="alerts-list" id="alerts-list">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ FOOTER ══ -->
+    <footer class="footer">
+      <div class="footer-left">
+        <div class="footer-name">Haris Hussain</div>
+        <div class="footer-role">Space Science · University of the Punjab · Project 1.2</div>
+      </div>
+      <div class="footer-right">
+        Deforestation Detection · Northern Pakistan<br />
+        Built with Landsat-8/9 · GEE · Chart.js · Vanilla JS<br />
+        <span style="color:var(--emerald);">© 2024 · GIS & Remote Sensing Portfolio</span>
+      </div>
+    </footer>
+
+  </div><!-- /wrapper -->
+
+  <script>
+  /* ═══════════════════════════════════════════
+     PARTICLE BACKGROUND — Floating Tree Icons
+  ═══════════════════════════════════════════ */
+  (function() {
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    const TREE_CHARS = ['🌲','🌳','🌴','🌿','🍃'];
+    let particles = [];
+    let W, H;
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function createParticle() {
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H + H,
+        size: 10 + Math.random() * 14,
+        speed: 0.2 + Math.random() * 0.5,
+        drift: (Math.random() - 0.5) * 0.3,
+        opacity: 0.08 + Math.random() * 0.18,
+        char: TREE_CHARS[Math.floor(Math.random() * TREE_CHARS.length)],
+        rotation: (Math.random() - 0.5) * 0.2,
+        rotSpeed: (Math.random() - 0.5) * 0.005,
+        angle: 0,
+      };
+    }
+
+    function init() {
+      resize();
+      particles = [];
+      const count = Math.floor(W * H / 14000);
+      for (let i = 0; i < count; i++) {
+        const p = createParticle();
+        p.y = Math.random() * H; // start scattered
+        particles.push(p);
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, W, H);
+      for (let p of particles) {
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.translate(p.x, p.y);
+        p.angle += p.rotSpeed;
+        ctx.rotate(p.angle);
+        ctx.font = `${p.size}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.char, 0, 0);
+        ctx.restore();
+
+        p.y -= p.speed;
+        p.x += p.drift;
+
+        if (p.y < -40) {
+          Object.assign(p, createParticle());
+          p.y = H + 20;
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', init);
+    init();
+    animate();
+  })();
+
+  /* ═══════════════════════════════════════════
+     MAP DATA GENERATION — Layered Noise
+  ═══════════════════════════════════════════ */
+  const GRID_W = 50;
+  const GRID_H = 35;
+
+  // Pseudo-random seeded noise
+  function seededRand(seed) {
+    let s = seed;
+    return function() {
+      s = (s * 1664525 + 1013904223) & 0xffffffff;
+      return ((s >>> 0) / 0xffffffff);
+    };
+  }
+
+  function generateMap(seed, year) {
+    const rand = seededRand(seed);
+    const map = [];
+
+    for (let row = 0; row < GRID_H; row++) {
+      const rowData = [];
+      for (let col = 0; col < GRID_W; col++) {
+        // Northern rows (low row index) → more forest
+        const northBias = 1 - (row / GRID_H) * 0.65;
+        // East-center has more forest (mountain valleys)
+        const eastBias = 1 - Math.abs(col / GRID_W - 0.4) * 0.7;
+        const noise = rand();
+        const combined = northBias * 0.55 + eastBias * 0.25 + noise * 0.20;
+
+        let type;
+        // Top rows: glaciers/water in far north
+        if (row < 4 && col > GRID_W * 0.3 && rand() > 0.5) {
+          type = 'water';
+        } else if (combined > 0.72) {
+          type = 'dense_forest';
+        } else if (combined > 0.55) {
+          type = 'sparse_forest';
+        } else if (combined > 0.38) {
+          type = 'deforested';
+        } else {
+          type = 'non_forest';
+        }
+        rowData.push(type);
+      }
+      map.push(rowData);
+    }
+    return map;
+  }
+
+  // Apply deforestation changes for 2024 (southern & mid areas lose forest)
+  function applyDeforestation(map2015) {
+    const rand = seededRand(9999);
+    const map2024 = map2015.map(r => [...r]);
+    const changed = [];
+
+    for (let row = 0; row < GRID_H; row++) {
+      for (let col = 0; col < GRID_W; col++) {
+        const type = map2015[row][col];
+        if (type === 'dense_forest' || type === 'sparse_forest') {
+          // Higher deforestation probability in southern half
+          const southFactor = (row / GRID_H) * 0.55;
+          const prob = 0.04 + southFactor + rand() * 0.08;
+          if (rand() < prob) {
+            map2024[row][col] = 'deforested';
+            changed.push([row, col]);
+          }
+        }
+      }
+    }
+    // Some reforestation patches
+    for (let row = 0; row < GRID_H; row++) {
+      for (let col = 0; col < GRID_W; col++) {
+        if (map2015[row][col] === 'deforested' && rand() < 0.06) {
+          map2024[row][col] = 'sparse_forest';
+        }
+      }
+    }
+    return { map: map2024, changed };
+  }
+
+  const map2015Data = generateMap(12345, 2015);
+  const { map: map2024Data, changed: changedCells } = applyDeforestation(map2015Data);
+
+  // Count cells
+  function countTypes(map) {
+    const counts = { dense_forest: 0, sparse_forest: 0, deforested: 0, non_forest: 0, water: 0 };
+    for (const row of map) for (const cell of row) counts[cell] = (counts[cell] || 0) + 1;
+    return counts;
+  }
+
+  const counts2015 = countTypes(map2015Data);
+  const counts2024 = countTypes(map2024Data);
+
+  // Each cell ≈ 4 km²
+  const KM2_PER_CELL = 4;
+  const forest2015_km2 = (counts2015.dense_forest + counts2015.sparse_forest) * KM2_PER_CELL + 3420;
+  const forest2024_km2 = (counts2024.dense_forest + counts2024.sparse_forest) * KM2_PER_CELL + 3420;
+
+  // Deforestation: cells that went from forest to deforested
+  const changedSet = new Set(changedCells.map(([r,c]) => `${r},${c}`));
+  const deforested_km2 = changedCells.length * KM2_PER_CELL + 260;
+
+  // Reforested: cells that went from deforested to sparse_forest
+  let reforested_count = 0;
+  for (let row = 0; row < GRID_H; row++) {
+    for (let col = 0; col < GRID_W; col++) {
+      if (map2015Data[row][col] === 'deforested' && map2024Data[row][col] === 'sparse_forest') {
+        reforested_count++;
+      }
+    }
+  }
+  const reforested_km2 = reforested_count * KM2_PER_CELL + 60;
+  const net_pct = (((forest2024_km2 - forest2015_km2) / forest2015_km2) * 100).toFixed(1);
+  const annual_rate = ((deforested_km2 - reforested_km2) / 9).toFixed(0);
+
+  /* ═══════════════════════════════════════════
+     DRAW MAP CANVASES
+  ═══════════════════════════════════════════ */
+  const TYPE_COLORS = {
+    dense_forest: ['#1a7a3c','#23a050','#2ec060'],
+    sparse_forest: ['#1a5c35','#1f7040','#24844a'],
+    deforested:   ['#b87333','#c8864a','#d4935a'],
+    non_forest:   ['#3a3e42','#424850','#4a5058'],
+    water:        ['#5588bb','#6699cc','#8fc8ff'],
+  };
+
+  function cellColor(type, randVal) {
+    const colors = TYPE_COLORS[type];
+    const idx = Math.floor(randVal * colors.length);
+    return colors[idx];
+  }
+
+  function drawMap(canvasId, mapData, changedMap, highlight) {
+    const canvas = document.getElementById(canvasId);
+    const container = document.getElementById('map-compare');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    const ctx = canvas.getContext('2d');
+    const cw = canvas.width, ch = canvas.height;
+    const cellW = cw / GRID_W;
+    const cellH = ch / GRID_H;
+    const rand = seededRand(11111);
+
+    for (let row = 0; row < GRID_H; row++) {
+      for (let col = 0; col < GRID_W; col++) {
+        const type = mapData[row][col];
+        const isChanged = highlight && changedMap && changedMap.has(`${row},${col}`);
+        const r = rand();
+        let color = cellColor(type, r);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
+
+        if (isChanged) {
+          ctx.fillStyle = 'rgba(255,34,68,0.28)';
+          ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
+          ctx.strokeStyle = '#ff2244';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(col * cellW + 0.6, row * cellH + 0.6, cellW - 1.2, cellH - 1.2);
+        }
+      }
+    }
+
+    // Grid overlay (subtle)
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 0.3;
+    for (let row = 0; row <= GRID_H; row++) {
+      ctx.beginPath();
+      ctx.moveTo(0, row * cellH);
+      ctx.lineTo(cw, row * cellH);
+      ctx.stroke();
+    }
+    for (let col = 0; col <= GRID_W; col++) {
+      ctx.beginPath();
+      ctx.moveTo(col * cellW, 0);
+      ctx.lineTo(col * cellW, ch);
+      ctx.stroke();
+    }
+
+    // Region labels
+    ctx.font = 'bold 11px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('Gilgit-Baltistan', cw * 0.5, ch * 0.12);
+    ctx.fillText('Chitral', cw * 0.18, ch * 0.32);
+    ctx.fillText('Dir', cw * 0.22, ch * 0.55);
+    ctx.fillText('Swat', cw * 0.38, ch * 0.68);
+    ctx.fillText('Kohistan', cw * 0.65, ch * 0.45);
+  }
+
+  function initMaps() {
+    drawMap('canvas-2015', map2015Data, null, false);
+    drawMap('canvas-2024', map2024Data, changedSet, true);
+  }
+
+  /* ── Divider drag ── */
+  const mapCompare = document.getElementById('map-compare');
+  const canvas2024 = document.getElementById('canvas-2024');
+  const divider = document.getElementById('map-divider');
+  let isDragging = false;
+  let dividerPct = 50;
+
+  function updateDivider(pct) {
+    dividerPct = Math.max(5, Math.min(95, pct));
+    divider.style.left = dividerPct + '%';
+    canvas2024.style.clipPath = `inset(0 0 0 ${dividerPct}%)`;
+  }
+
+  function getRelativeX(e) {
+    const rect = mapCompare.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    return (x / rect.width) * 100;
+  }
+
+  divider.addEventListener('mousedown', e => { isDragging = true; e.preventDefault(); });
+  mapCompare.addEventListener('mousedown', e => { isDragging = true; updateDivider(getRelativeX(e)); });
+  document.addEventListener('mousemove', e => { if (isDragging) updateDivider(getRelativeX(e)); });
+  document.addEventListener('mouseup', () => { isDragging = false; });
+  divider.addEventListener('touchstart', e => { isDragging = true; e.preventDefault(); });
+  document.addEventListener('touchmove', e => { if (isDragging) updateDivider(getRelativeX(e)); });
+  document.addEventListener('touchend', () => { isDragging = false; });
+
+  /* ═══════════════════════════════════════════
+     ANIMATED COUNTERS
+  ═══════════════════════════════════════════ */
+  function animateCounter(id, target, decimals, suffix, duration) {
+    const el = document.getElementById(id);
+    const start = performance.now();
+    function step(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = (target * eased);
+      el.textContent = (decimals === 0 ? Math.round(val) : val.toFixed(decimals)) + (suffix || '');
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ═══════════════════════════════════════════
+     CHART.JS CHARTS
+  ═══════════════════════════════════════════ */
+  Chart.defaults.color = '#7aad8e';
+  Chart.defaults.borderColor = 'rgba(0,255,136,0.08)';
+  Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+  // Timeline Data
+  const years = [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+  const forestCoverData = [4620,4570,4490,4420,4500,4390,4260,4100,4020,3950]; // km² (includes base)
+  const deforestedAreaData = [0,68,148,220,148,280,420,600,700,790];
+
+  function initTimeline() {
+    const ctx = document.getElementById('chart-timeline').getContext('2d');
+
+    // Annotation lines plugin inline
+    const annotationPlugin = {
+      id: 'annotations',
+      afterDraw(chart) {
+        const { ctx: c, scales, chartArea } = chart;
+        const events = [
+          { year: 2019, label: '🪵 Logging Ban', color: '#00ff88' },
+          { year: 2022, label: '🌊 Floods 2022', color: '#4499ff' },
+        ];
+        events.forEach(ev => {
+          const x = scales.x.getPixelForValue(ev.year);
+          c.save();
+          c.setLineDash([5,4]);
+          c.strokeStyle = ev.color + '80';
+          c.lineWidth = 1.5;
+          c.beginPath();
+          c.moveTo(x, chartArea.top);
+          c.lineTo(x, chartArea.bottom);
+          c.stroke();
+
+          c.fillStyle = ev.color;
+          c.font = '10px Inter';
+          c.textAlign = 'center';
+          c.fillText(ev.label, x, chartArea.top + 14);
+          c.restore();
+        });
+      }
+    };
+
+    new Chart(ctx, {
+      type: 'line',
+      plugins: [annotationPlugin],
+      data: {
+        labels: years,
+        datasets: [
+          {
+            label: 'Forest Cover (km²)',
+            data: forestCoverData,
+            borderColor: '#00ff88',
+            backgroundColor: 'rgba(0,255,136,0.08)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#00ff88',
+            pointRadius: 4,
+            pointHoverRadius: 7,
+          },
+          {
+            label: 'Cumulative Deforested (km²)',
+            data: deforestedAreaData,
+            borderColor: '#ff4444',
+            backgroundColor: 'rgba(255,68,68,0.07)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#ff4444',
+            pointRadius: 4,
+            pointHoverRadius: 7,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#7aad8e', font: { size: 12 }, boxWidth: 14 }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(4,18,8,0.95)',
+            borderColor: 'rgba(0,255,136,0.3)',
+            borderWidth: 1,
+            titleColor: '#00ff88',
+            bodyColor: '#cde8d8',
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,255,136,0.06)' },
+            ticks: { color: '#7aad8e' }
+          },
+          y: {
+            grid: { color: 'rgba(0,255,136,0.06)' },
+            ticks: { color: '#7aad8e' }
+          }
+        }
+      }
+    });
+  }
+
+  // District Chart
+  function initDistrict() {
+    const ctx = document.getElementById('chart-district').getContext('2d');
+    const districts = ['Kohistan', 'Dir (Upper)', 'Swat', 'Chitral', 'Gilgit-Baltistan'];
+    const losses = [28.4, 22.1, 19.7, 14.3, 8.2];
+    const bgColors = losses.map(l => {
+      const t = l / 30;
+      const r = Math.round(180 + t * 75);
+      const g = Math.round(40 + (1-t)*60);
+      const b = 20;
+      return `rgba(${r},${g},${b},0.85)`;
+    });
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: districts,
+        datasets: [{
+          label: 'Forest Loss (%)',
+          data: losses,
+          backgroundColor: bgColors,
+          borderColor: bgColors.map(c => c.replace('0.85','1')),
+          borderWidth: 1,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(4,18,8,0.95)',
+            borderColor: 'rgba(255,102,0,0.3)',
+            borderWidth: 1,
+            titleColor: '#ff6600',
+            bodyColor: '#cde8d8',
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.x}% forest lost (2015–2024)`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,102,0,0.06)' },
+            ticks: { color: '#7aad8e', callback: v => v + '%' }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: '#cde8d8', font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+
+  // Causes Donut
+  function initCauses() {
+    const ctx = document.getElementById('chart-causes').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Illegal Logging','Agricultural Expansion','Urbanization','Forest Fires','Other'],
+        datasets: [{
+          data: [45, 25, 15, 10, 5],
+          backgroundColor: [
+            'rgba(255,102,0,0.85)',
+            'rgba(204,136,0,0.85)',
+            'rgba(255,180,50,0.75)',
+            'rgba(255,50,50,0.8)',
+            'rgba(100,120,110,0.7)',
+          ],
+          borderColor: ['#ff6600','#cc8800','#ffb432','#ff3232','#64786e'],
+          borderWidth: 2,
+          hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#7aad8e', font: { size: 10 }, boxWidth: 12, padding: 10 }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(4,18,8,0.95)',
+            borderColor: 'rgba(204,136,0,0.3)',
+            borderWidth: 1,
+            titleColor: '#cc8800',
+            bodyColor: '#cde8d8',
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // NDVI Chart
+  const ndviZones = [
+    { name: 'Swat Valley',   v2015: 0.71, v2024: 0.42 },
+    { name: 'Upper Dir',     v2015: 0.66, v2024: 0.44 },
+    { name: 'Chitral',       v2015: 0.58, v2024: 0.46 },
+    { name: 'Kohistan',      v2015: 0.74, v2024: 0.38 },
+    { name: 'GB Central',    v2015: 0.62, v2024: 0.55 },
+  ];
+
+  function initNDVI() {
+    const ctx = document.getElementById('chart-ndvi').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ndviZones.map(z => z.name),
+        datasets: [
+          {
+            label: 'NDVI 2015',
+            data: ndviZones.map(z => z.v2015),
+            backgroundColor: 'rgba(0,255,136,0.65)',
+            borderColor: '#00ff88',
+            borderWidth: 1.5,
+            borderRadius: 4,
+          },
+          {
+            label: 'NDVI 2024',
+            data: ndviZones.map(z => z.v2024),
+            backgroundColor: 'rgba(255,68,68,0.65)',
+            borderColor: '#ff4444',
+            borderWidth: 1.5,
+            borderRadius: 4,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#7aad8e', font: { size: 11 }, boxWidth: 12 }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(4,18,8,0.95)',
+            borderColor: 'rgba(0,255,136,0.3)',
+            borderWidth: 1,
+            titleColor: '#00ff88',
+            bodyColor: '#cde8d8',
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,255,136,0.06)' },
+            ticks: { color: '#7aad8e', font: { size: 10 } }
+          },
+          y: {
+            min: 0, max: 1,
+            grid: { color: 'rgba(0,255,136,0.06)' },
+            ticks: { color: '#7aad8e', stepSize: 0.2 }
+          }
+        }
+      }
+    });
+  }
+
+  // NDVI Zone Panel
+  function buildNDVIZones() {
+    const container = document.getElementById('ndvi-zones-panel');
+    ndviZones.forEach(zone => {
+      const delta = (zone.v2024 - zone.v2015).toFixed(2);
+      const pct = Math.round((zone.v2024 / zone.v2015) * 100);
+      const isDown = zone.v2024 < zone.v2015;
+      const arrow = isDown ? '↓' : '↑';
+      const deltaColor = isDown ? '#ff4444' : '#00ff88';
+
+      container.innerHTML += `
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#cde8d8;">${zone.name}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${deltaColor};font-weight:700;">${arrow} ${Math.abs(delta)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="ndvi-bar-label" style="font-size:10px;color:#3d7050;width:42px;">2015</div>
+            <div class="ndvi-bar-track">
+              <div class="ndvi-bar-fill" style="width:${zone.v2015*100}%;background:linear-gradient(90deg,#00cc6a,#00ff88);"></div>
+            </div>
+            <div class="ndvi-bar-val" style="color:#00ff88;">${zone.v2015}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <div class="ndvi-bar-label" style="font-size:10px;color:#3d7050;width:42px;">2024</div>
+            <div class="ndvi-bar-track">
+              <div class="ndvi-bar-fill" style="width:${zone.v2024*100}%;background:linear-gradient(90deg,#cc2222,#ff4444);"></div>
+            </div>
+            <div class="ndvi-bar-val" style="color:#ff4444;">${zone.v2024}</div>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  /* ═══════════════════════════════════════════
+     ALERT FEED
+  ═══════════════════════════════════════════ */
+  const alertsData = [
+    {
+      severity: 'critical',
+      icon: '🚨',
+      title: '⚠ Critical deforestation detected in Swat Valley',
+      time: '2024-09-12 · 08:34 PKT',
+      coords: '35.22°N, 72.36°E',
+      area: '12.4 km² cleared',
+      desc: 'Rapid NDVI decline (Δ = -0.31) detected over 3-day period. Likely illegal logging activity.'
+    },
+    {
+      severity: 'critical',
+      icon: '🚨',
+      title: '⚠ Major tree cover loss — Kohistan District',
+      time: '2024-07-28 · 14:12 PKT',
+      coords: '35.59°N, 73.11°E',
+      area: '18.7 km² affected',
+      desc: 'Post-flood erosion combined with logging activity. SAR backscatter confirms canopy removal.'
+    },
+    {
+      severity: 'high',
+      icon: '⚠️',
+      title: '⚠ Elevated burn scar detected near Upper Dir',
+      time: '2024-06-05 · 10:50 PKT',
+      coords: '35.61°N, 71.88°E',
+      area: '6.1 km² burn area',
+      desc: 'Forest fire scar identified via SWIR-1 anomaly. Recovery monitoring initiated.'
+    },
+    {
+      severity: 'high',
+      icon: '⚠️',
+      title: '⚠ Agricultural encroachment detected — Chitral',
+      time: '2024-03-18 · 06:20 PKT',
+      coords: '36.41°N, 71.79°E',
+      area: '3.8 km² converted',
+      desc: 'Seasonal NDVI analysis shows forest-to-agriculture conversion along valley margins.'
+    },
+    {
+      severity: 'moderate',
+      icon: '📡',
+      title: '◉ Urban expansion into forest buffer — Gilgit',
+      time: '2024-01-04 · 09:00 PKT',
+      coords: '35.92°N, 74.31°E',
+      area: '2.2 km² urbanized',
+      desc: 'Gradual urban sprawl encroaching on protected forest buffer zones. Monitoring continued.'
+    }
+  ];
+
+  function buildAlerts() {
+    const container = document.getElementById('alerts-list');
+    alertsData.forEach((a, i) => {
+      container.innerHTML += `
+        <div class="alert-item alert-${a.severity}" style="animation-delay:${i*0.12}s">
+          <div class="alert-icon">${a.icon}</div>
+          <div class="alert-body">
+            <div class="alert-title ${a.severity}">${a.title}</div>
+            <div style="font-size:12px;color:#7aad8e;margin:4px 0 6px;">${a.desc}</div>
+            <div class="alert-meta">
+              <span>🕐 ${a.time}</span>
+              <span>📍 ${a.coords}</span>
+              <span>🌲 ${a.area}</span>
+            </div>
+          </div>
+          <div class="severity-badge badge-${a.severity}">${a.severity.toUpperCase()}</div>
+        </div>
+      `;
+    });
+  }
+
+  /* ═══════════════════════════════════════════
+     INTERSECTION OBSERVER — Animate on scroll
+  ═══════════════════════════════════════════ */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  /* ═══════════════════════════════════════════
+     INIT ALL
+  ═══════════════════════════════════════════ */
+  window.addEventListener('load', () => {
+    // Draw maps
+    initMaps();
+    window.addEventListener('resize', initMaps);
+
+    // Animate stat counters
+    setTimeout(() => {
+      animateCounter('stat-2015', Math.round(forest2015_km2), 0, '', 1800);
+      animateCounter('stat-2024', Math.round(forest2024_km2), 0, '', 1800);
+      animateCounter('stat-defor', Math.round(deforested_km2), 0, '', 1800);
+      animateCounter('stat-refor', Math.round(reforested_km2), 0, '', 1800);
+      animateCounter('stat-net', Math.abs(parseFloat(net_pct)), 1, '%', 1800);
+      animateCounter('stat-annual', Math.round(annual_rate), 0, '', 1800);
+    }, 300);
+
+    // Charts
+    initTimeline();
+    initDistrict();
+    initCauses();
+    initNDVI();
+
+    // NDVI zones
+    buildNDVIZones();
+
+    // Alerts
+    buildAlerts();
+
+    // Duplicate ticker for seamless loop
+    const ti = document.getElementById('ticker-inner');
+    ti.innerHTML += ti.innerHTML;
+  });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Processing Analyzer — Haris Hussain</title>
+  <meta name="description" content="Interactive signal processing tool with FFT, digital filters (low-pass, high-pass, band-pass), noise removal, and frequency spectrum analysis. Portfolio project by Haris Hussain." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ============================================
+       DESIGN TOKENS
+    ============================================ */
+    :root {
+      --bg-deep:       #03060f;
+      --bg-base:       #060b18;
+      --bg-card:       rgba(6, 12, 28, 0.88);
+      --neon-cyan:     #00e5ff;
+      --neon-magenta:  #ff00aa;
+      --neon-amber:    #ffaa00;
+      --neon-green:    #39ff14;
+      --neon-purple:   #bf5fff;
+      --neon-red:      #ff3860;
+      --text-primary:  #ddeeff;
+      --text-muted:    #5a7a9a;
+      --text-dim:      #2a3a4a;
+      --border:        rgba(0, 229, 255, 0.12);
+      --border-hover:  rgba(0, 229, 255, 0.35);
+      --glow-cyan:     0 0 24px rgba(0,229,255,0.25);
+      --radius-lg:     16px;
+      --radius-md:     10px;
+      --radius-sm:     6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============================================
+       ANIMATED BACKGROUND
+    ============================================ */
+    .bg-layer {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .bg-grid {
+      background-image:
+        linear-gradient(rgba(0,229,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.025) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+    .bg-glow {
+      background:
+        radial-gradient(ellipse 55% 45% at 15% 15%, rgba(0,229,255,0.07) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 55% at 85% 85%, rgba(255,0,170,0.05) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 30% at 50% 100%, rgba(191,95,255,0.04) 0%, transparent 55%);
+    }
+
+    /* Scanning line effect */
+    .scanline {
+      position: fixed;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, rgba(0,229,255,0.4) 50%, transparent 100%);
+      z-index: 0;
+      animation: scanMove 8s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes scanMove {
+      0%   { top: -2px; opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 1; }
+      100% { top: 100vh; opacity: 0; }
+    }
+
+    /* ============================================
+       LAYOUT
+    ============================================ */
+    .app {
+      position: relative; z-index: 1;
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* ============================================
+       HEADER
+    ============================================ */
+    header {
+      padding: 34px 0 26px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-brand { display: flex; flex-direction: column; gap: 5px; }
+    .header-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--neon-cyan);
+      letter-spacing: 0.18em;
+      opacity: 0.75;
+    }
+    h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(20px, 3.5vw, 36px);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-magenta) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.03em;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    .badge {
+      padding: 5px 13px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      border: 1px solid;
+    }
+    .badge-cyan    { color: var(--neon-cyan);    border-color: rgba(0,229,255,0.3);   background: rgba(0,229,255,0.06); }
+    .badge-magenta { color: var(--neon-magenta); border-color: rgba(255,0,170,0.3);  background: rgba(255,0,170,0.06); }
+    .badge-amber   { color: var(--neon-amber);   border-color: rgba(255,170,0,0.3);  background: rgba(255,170,0,0.06); }
+
+    /* ============================================
+       STATUS / TOOLBAR
+    ============================================ */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(10px);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .toolbar-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 8px var(--neon-cyan);
+      animation: blink 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink {
+      0%,100% { opacity:1; box-shadow: 0 0 8px var(--neon-cyan); }
+      50%      { opacity:0.4; box-shadow: 0 0 3px var(--neon-cyan); }
+    }
+    .toolbar-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--neon-cyan);
+      letter-spacing: 0.05em;
+    }
+    .toolbar-sep { color: var(--text-dim); }
+    .toolbar-stat {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .toolbar-stat b { color: var(--neon-cyan); }
+
+    /* ============================================
+       MAIN LAYOUT
+    ============================================ */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+    @media (max-width: 1000px) { .main-layout { grid-template-columns: 1fr; } }
+
+    /* ============================================
+       GLASS CARD
+    ============================================ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(14px);
+      padding: 22px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .card:hover { border-color: var(--border-hover); box-shadow: var(--glow-cyan); }
+
+    .card-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--neon-cyan);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: block;
+      width: 3px; height: 13px;
+      background: var(--neon-cyan);
+      border-radius: 2px;
+      box-shadow: 0 0 6px var(--neon-cyan);
+    }
+
+    /* ============================================
+       SIGNAL SOURCE SELECTOR
+    ============================================ */
+    .source-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .source-btn {
+      padding: 11px 6px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.22s;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .source-btn .src-icon { font-size: 18px; line-height: 1; }
+    .source-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0,229,255,0.05); }
+    .source-btn.active {
+      border-color: var(--neon-cyan);
+      color: var(--bg-deep);
+      background: var(--neon-cyan);
+      box-shadow: 0 0 16px rgba(0,229,255,0.4);
+    }
+
+    /* ============================================
+       SLIDERS
+    ============================================ */
+    .param-group { margin-bottom: 17px; }
+    .param-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+    }
+    .param-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .param-label .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+    .tag-freq   { color: var(--neon-cyan);    border-color: rgba(0,229,255,0.3);   background: rgba(0,229,255,0.08); }
+    .tag-amp    { color: var(--neon-magenta); border-color: rgba(255,0,170,0.3);   background: rgba(255,0,170,0.08); }
+    .tag-noise  { color: var(--neon-amber);   border-color: rgba(255,170,0,0.3);   background: rgba(255,170,0,0.08); }
+    .tag-sr     { color: var(--neon-green);   border-color: rgba(57,255,20,0.3);   background: rgba(57,255,20,0.08); }
+    .tag-filter { color: var(--neon-purple);  border-color: rgba(191,95,255,0.3);  background: rgba(191,95,255,0.08); }
+
+    .param-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--neon-cyan);
+      min-width: 75px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--neon-cyan) var(--pct, 50%), rgba(255,255,255,0.08) var(--pct, 50%));
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].magenta {
+      background: linear-gradient(90deg, var(--neon-magenta) var(--pct, 50%), rgba(255,255,255,0.08) var(--pct, 50%));
+    }
+    input[type="range"].amber {
+      background: linear-gradient(90deg, var(--neon-amber) var(--pct, 50%), rgba(255,255,255,0.08) var(--pct, 50%));
+    }
+    input[type="range"].purple {
+      background: linear-gradient(90deg, var(--neon-purple) var(--pct, 50%), rgba(255,255,255,0.08) var(--pct, 50%));
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px; height: 15px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 8px rgba(0,229,255,0.6);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    input[type="range"].magenta::-webkit-slider-thumb {
+      background: var(--neon-magenta);
+      box-shadow: 0 0 8px rgba(255,0,170,0.6);
+    }
+    input[type="range"].amber::-webkit-slider-thumb {
+      background: var(--neon-amber);
+      box-shadow: 0 0 8px rgba(255,170,0,0.6);
+    }
+    input[type="range"].purple::-webkit-slider-thumb {
+      background: var(--neon-purple);
+      box-shadow: 0 0 8px rgba(191,95,255,0.6);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.35);
+    }
+    .slider-bounds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 3px;
+    }
+
+    /* ============================================
+       FILTER SELECTOR
+    ============================================ */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .filter-btn {
+      flex: 1;
+      min-width: 60px;
+      padding: 9px 4px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+    .filter-btn:hover { color: var(--neon-purple); border-color: rgba(191,95,255,0.4); }
+    .filter-btn.active {
+      border-color: var(--neon-purple);
+      color: var(--neon-purple);
+      background: rgba(191,95,255,0.1);
+      box-shadow: 0 0 10px rgba(191,95,255,0.2);
+    }
+    .filter-btn.none-btn.active {
+      border-color: var(--text-muted);
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.05);
+      box-shadow: none;
+    }
+
+    /* ============================================
+       TOGGLE SWITCH
+    ============================================ */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+    .toggle-label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .toggle {
+      position: relative;
+      width: 40px; height: 22px;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 2px; top: 2px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: transform 0.3s, background 0.3s;
+    }
+    .toggle input:checked + .toggle-slider { background: rgba(0,229,255,0.2); border-color: var(--neon-cyan); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); }
+
+    /* ============================================
+       METRICS
+    ============================================ */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .metric-chip {
+      padding: 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.3);
+      transition: border-color 0.3s;
+    }
+    .metric-chip .mc-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    .metric-chip .mc-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .metric-chip .mc-unit { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .mc-cyan    { --mc: var(--neon-cyan); }
+    .mc-magenta { --mc: var(--neon-magenta); }
+    .mc-amber   { --mc: var(--neon-amber); }
+    .mc-purple  { --mc: var(--neon-purple); }
+    .mc-green   { --mc: var(--neon-green); }
+    .mc-red     { --mc: var(--neon-red); }
+    .metric-chip .mc-value { color: var(--mc, var(--neon-cyan)); }
+
+    /* ============================================
+       RIGHT COLUMN — CHARTS
+    ============================================ */
+    .charts-col { display: flex; flex-direction: column; gap: 22px; }
+
+    /* Chart tabs */
+    .viz-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .viz-tab {
+      padding: 7px 16px;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.04em;
+    }
+    .viz-tab.active {
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      background: rgba(0,229,255,0.08);
+    }
+    .viz-tab:hover:not(.active) { color: var(--text-primary); border-color: var(--border-hover); }
+
+    .viz-panel { display: none; }
+    .viz-panel.active { display: block; }
+
+    /* Oscilloscope frame */
+    .osc-frame {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #010508;
+      border: 1px solid rgba(0,229,255,0.15);
+      padding: 16px;
+      position: relative;
+    }
+    .osc-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(0,229,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.015) 1px, transparent 1px);
+      background-size: 20px 20px;
+      pointer-events: none;
+      border-radius: var(--radius-md);
+    }
+    .osc-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .osc-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: rgba(0,229,255,0.5);
+      letter-spacing: 0.1em;
+    }
+    .osc-dots { display: flex; gap: 5px; }
+    .osc-dot  { width: 7px; height: 7px; border-radius: 50%; }
+
+    .chart-wrap    { position: relative; height: 240px; }
+    .chart-wrap-lg { position: relative; height: 280px; }
+    .chart-wrap-sm { position: relative; height: 200px; }
+
+    /* Side-by-side comparison */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .compare-grid { grid-template-columns: 1fr; } }
+
+    .compare-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .compare-label .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* Frequency peak badges */
+    .peaks-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .peak-badge {
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.25);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--neon-cyan);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s;
+    }
+    .peak-badge .peak-rank { color: var(--text-muted); font-size: 9px; }
+
+    /* Waterfall canvas */
+    #waterfallCanvas {
+      width: 100%; height: 220px;
+      border-radius: var(--radius-sm);
+      display: block;
+    }
+
+    /* ============================================
+       EXPORT BUTTON
+    ============================================ */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+      letter-spacing: 0.03em;
+    }
+    .btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0,229,255,0.06); }
+    .btn-primary {
+      background: rgba(0,229,255,0.1);
+      border-color: rgba(0,229,255,0.4);
+      color: var(--neon-cyan);
+    }
+    .btn-primary:hover { background: rgba(0,229,255,0.18); box-shadow: 0 0 16px rgba(0,229,255,0.2); }
+    .btn svg { transition: transform 0.2s; }
+    .btn:hover svg { transform: translateY(2px); }
+
+    /* ============================================
+       LEGEND
+    ============================================ */
+    .chart-legend {
+      display: flex;
+      gap: 18px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); }
+    .leg-line { width: 18px; height: 2px; border-radius: 2px; }
+
+    /* ============================================
+       FOOTER
+    ============================================ */
+    footer {
+      margin-top: 44px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .footer-text { font-size: 12px; color: var(--text-muted); }
+    .footer-text strong { color: var(--neon-cyan); }
+    .stack-tags { display: flex; gap: 7px; flex-wrap: wrap; }
+    .stag {
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-dim);
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* ============================================
+       ANIMATION
+    ============================================ */
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .anim { animation: fadeUp 0.45s ease forwards; }
+    .anim:nth-child(1) { animation-delay:0.05s; }
+    .anim:nth-child(2) { animation-delay:0.12s; }
+    .anim:nth-child(3) { animation-delay:0.19s; }
+  </style>
+</head>
+<body>
+
+<div class="bg-layer bg-grid"></div>
+<div class="bg-layer bg-glow"></div>
+<div class="scanline"></div>
+
+<div class="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header>
+    <div class="header-brand">
+      <div class="header-eyebrow">◈ PROJECT 8.2 / ELECTRONICS ENGINEERING</div>
+      <h1>Signal Processing Analyzer</h1>
+      <div class="header-sub">FFT · Digital Filters · Noise Removal · Frequency Spectrum</div>
+    </div>
+    <div class="header-actions">
+      <span class="badge badge-cyan">DSP</span>
+      <span class="badge badge-magenta">FFT</span>
+      <span class="badge badge-amber">Filters</span>
+    </div>
+  </header>
+
+  <!-- ===================== TOOLBAR ===================== -->
+  <div class="toolbar">
+    <div class="toolbar-dot"></div>
+    <span class="toolbar-label">ANALYZER ACTIVE</span>
+    <span class="toolbar-sep">│</span>
+    <span class="toolbar-stat">Signal: <b id="tbSignal">Sine Wave</b></span>
+    <span class="toolbar-sep">│</span>
+    <span class="toolbar-stat">Filter: <b id="tbFilter">None</b></span>
+    <span class="toolbar-sep">│</span>
+    <span class="toolbar-stat">f<sub>s</sub>: <b id="tbSampleRate">4096 Hz</b></span>
+    <span class="toolbar-sep">│</span>
+    <span class="toolbar-stat">SNR: <b id="tbSNR">—</b></span>
+    <span class="toolbar-sep">│</span>
+    <span class="toolbar-stat">Peak: <b id="tbPeak">—</b></span>
+  </div>
+
+  <!-- ===================== MAIN LAYOUT ===================== -->
+  <div class="main-layout">
+
+    <!-- LEFT PANEL -->
+    <div class="left-col">
+
+      <!-- Signal Source -->
+      <div class="card anim">
+        <div class="card-title">Signal Source</div>
+        <div class="source-grid" id="sourceGrid">
+          <button class="source-btn active" data-src="sine">
+            <span class="src-icon">∿</span>Sine Wave
+          </button>
+          <button class="source-btn" data-src="square">
+            <span class="src-icon">⊓</span>Square Wave
+          </button>
+          <button class="source-btn" data-src="sawtooth">
+            <span class="src-icon">⋀</span>Sawtooth
+          </button>
+          <button class="source-btn" data-src="triangle">
+            <span class="src-icon">△</span>Triangle
+          </button>
+          <button class="source-btn" data-src="chirp">
+            <span class="src-icon">〜</span>Chirp
+          </button>
+          <button class="source-btn" data-src="noise">
+            <span class="src-icon">⊞</span>Pure Noise
+          </button>
+        </div>
+
+        <!-- Signal parameters -->
+        <div class="param-group">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-freq">freq</span> Fundamental</div>
+            <div class="param-value" id="valFreq">120 Hz</div>
+          </div>
+          <input type="range" id="sliderFreq" min="1" max="800" value="120" step="1" />
+          <div class="slider-bounds"><span>1 Hz</span><span>800 Hz</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-amp">amp</span> Amplitude</div>
+            <div class="param-value" id="valAmp">1.00 V</div>
+          </div>
+          <input type="range" id="sliderAmp" min="0.1" max="5" value="1" step="0.05" class="magenta" />
+          <div class="slider-bounds"><span>0.1 V</span><span>5.0 V</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-noise">noise</span> Noise Level</div>
+            <div class="param-value" id="valNoise">15%</div>
+          </div>
+          <input type="range" id="sliderNoise" min="0" max="200" value="15" step="1" class="amber" />
+          <div class="slider-bounds"><span>0%</span><span>200%</span></div>
+        </div>
+
+        <div class="param-group">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-sr">Fs</span> Sample Rate</div>
+            <div class="param-value" id="valSR">4096 Hz</div>
+          </div>
+          <input type="range" id="sliderSR" min="0" max="3" value="2" step="1" />
+          <div class="slider-bounds"><span>1024</span><span>16384</span></div>
+        </div>
+
+        <div class="toggle-row">
+          <span class="toggle-label">🔈 Second Harmonic</span>
+          <label class="toggle">
+            <input type="checkbox" id="toggleHarmonic" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">⚡ Third Harmonic</span>
+          <label class="toggle">
+            <input type="checkbox" id="toggleHarmonic3" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="card anim" style="margin-top:18px;">
+        <div class="card-title">Digital Filter</div>
+
+        <div class="filter-row" id="filterRow">
+          <button class="filter-btn none-btn active" data-filt="none">None</button>
+          <button class="filter-btn" data-filt="lpf">Low-Pass</button>
+          <button class="filter-btn" data-filt="hpf">High-Pass</button>
+          <button class="filter-btn" data-filt="bpf">Band-Pass</button>
+          <button class="filter-btn" data-filt="notch">Notch</button>
+        </div>
+
+        <div class="param-group" id="fcGroup">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-filter">fc</span> Cutoff Freq</div>
+            <div class="param-value" id="valFc">200 Hz</div>
+          </div>
+          <input type="range" id="sliderFc" min="1" max="1000" value="200" step="1" class="purple" />
+          <div class="slider-bounds"><span>1 Hz</span><span>1 kHz</span></div>
+        </div>
+
+        <div class="param-group" id="orderGroup">
+          <div class="param-header">
+            <div class="param-label"><span class="tag tag-filter">ord</span> Filter Order</div>
+            <div class="param-value" id="valOrder">4th</div>
+          </div>
+          <input type="range" id="sliderOrder" min="1" max="8" value="4" step="1" class="purple" />
+          <div class="slider-bounds"><span>1st</span><span>8th</span></div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-chip mc-cyan">
+            <div class="mc-label">Peak Freq</div>
+            <div class="mc-value" id="mvPeakF">—</div>
+            <div class="mc-unit">Hz</div>
+          </div>
+          <div class="metric-chip mc-magenta">
+            <div class="mc-label">Peak Power</div>
+            <div class="mc-value" id="mvPeakP">—</div>
+            <div class="mc-unit">dB</div>
+          </div>
+          <div class="metric-chip mc-amber">
+            <div class="mc-label">SNR</div>
+            <div class="mc-value" id="mvSNR">—</div>
+            <div class="mc-unit">dB</div>
+          </div>
+          <div class="metric-chip mc-green">
+            <div class="mc-label">THD</div>
+            <div class="mc-value" id="mvTHD">—</div>
+            <div class="mc-unit">%</div>
+          </div>
+          <div class="metric-chip mc-purple">
+            <div class="mc-label">Bandwidth</div>
+            <div class="mc-value" id="mvBW">—</div>
+            <div class="mc-unit">Hz</div>
+          </div>
+          <div class="metric-chip mc-red">
+            <div class="mc-label">Noise Floor</div>
+            <div class="mc-value" id="mvFloor">—</div>
+            <div class="mc-unit">dBFS</div>
+          </div>
+        </div>
+
+        <!-- Dominant frequency peaks -->
+        <div style="margin-top:14px;">
+          <div class="mc-label" style="margin-bottom:8px;">DOMINANT FREQUENCIES</div>
+          <div class="peaks-row" id="peaksRow"></div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="card anim" style="margin-top:18px;">
+        <div class="card-title">Export</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnExportCSV">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Waveform CSV
+          </button>
+          <button class="btn" id="btnExportFFT">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            FFT Data
+          </button>
+        </div>
+      </div>
+
+    </div><!-- end left-col -->
+
+    <!-- RIGHT — CHARTS -->
+    <div class="charts-col">
+
+      <!-- Main Analysis Card -->
+      <div class="card anim">
+        <div class="viz-tabs" id="vizTabs">
+          <button class="viz-tab active" data-tab="time">Time Domain</button>
+          <button class="viz-tab" data-tab="freq">Frequency Spectrum</button>
+          <button class="viz-tab" data-tab="compare">Before / After Filter</button>
+          <button class="viz-tab" data-tab="spectrogram">Spectrogram</button>
+        </div>
+
+        <!-- ——— Time Domain ——— -->
+        <div class="viz-panel active" id="tab-time">
+          <div class="osc-frame">
+            <div class="osc-topbar">
+              <span class="osc-title">CH1 — TIME DOMAIN</span>
+              <div class="osc-dots">
+                <div class="osc-dot" style="background:#ff5f57;"></div>
+                <div class="osc-dot" style="background:#ffbd2e;"></div>
+                <div class="osc-dot" style="background:#28ca41;"></div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="timeChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="leg-item"><div class="leg-line" style="background:var(--neon-cyan);"></div> Raw Signal</div>
+            <div class="leg-item"><div class="leg-line" style="background:var(--neon-magenta); height:2px; border-top:2px dashed var(--neon-magenta);"></div> Filtered</div>
+          </div>
+        </div>
+
+        <!-- ——— Frequency Spectrum ——— -->
+        <div class="viz-panel" id="tab-freq">
+          <div class="osc-frame">
+            <div class="osc-topbar">
+              <span class="osc-title">CH2 — FREQUENCY SPECTRUM (FFT)</span>
+              <div class="osc-dots">
+                <div class="osc-dot" style="background:#ff5f57;"></div>
+                <div class="osc-dot" style="background:#ffbd2e;"></div>
+                <div class="osc-dot" style="background:#28ca41;"></div>
+              </div>
+            </div>
+            <div class="chart-wrap-lg">
+              <canvas id="freqChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-legend" style="margin-top:10px;">
+            <div class="leg-item"><div class="leg-line" style="background:var(--neon-cyan);"></div> Raw FFT (dB)</div>
+            <div class="leg-item"><div class="leg-line" style="background:var(--neon-magenta);"></div> Filtered FFT</div>
+            <div class="leg-item"><div class="leg-line" style="background:var(--neon-amber); height:1px; border-top:1px dashed var(--neon-amber);"></div> Noise Floor</div>
+          </div>
+        </div>
+
+        <!-- ——— Before/After ——— -->
+        <div class="viz-panel" id="tab-compare">
+          <div class="compare-grid">
+            <div>
+              <div class="compare-label">
+                <div class="dot" style="background:var(--neon-cyan);"></div>
+                BEFORE FILTER — Raw
+              </div>
+              <div class="osc-frame">
+                <div class="chart-wrap-sm">
+                  <canvas id="beforeChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="compare-label">
+                <div class="dot" style="background:var(--neon-magenta);"></div>
+                AFTER FILTER — Cleaned
+              </div>
+              <div class="osc-frame">
+                <div class="chart-wrap-sm">
+                  <canvas id="afterChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <div class="compare-label" style="margin-bottom:8px;">
+              <div class="dot" style="background:var(--neon-amber);"></div>
+              FREQUENCY COMPARISON (dB)
+            </div>
+            <div class="osc-frame">
+              <div class="chart-wrap-sm">
+                <canvas id="compareFreqChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ——— Spectrogram ——— -->
+        <div class="viz-panel" id="tab-spectrogram">
+          <div class="compare-label" style="margin-bottom:8px;">
+            <div class="dot" style="background:var(--neon-purple);"></div>
+            WATERFALL SPECTROGRAM — Frequency vs. Time
+          </div>
+          <div class="osc-frame" style="padding:8px;">
+            <canvas id="waterfallCanvas"></canvas>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-family:'JetBrains Mono',monospace;">
+            X-axis: Frequency (0 → Fs/2) &nbsp;·&nbsp; Y-axis: Time (newest at top) &nbsp;·&nbsp; Color: Power (purple→cyan→yellow)
+          </div>
+        </div>
+
+      </div><!-- end main card -->
+
+    </div><!-- end charts-col -->
+  </div><!-- end main-layout -->
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-text">
+      Built by <strong>Haris Hussain</strong> · Space Science, University of Punjab · Project 8.2 / Electronics Engineering
+    </div>
+    <div class="stack-tags">
+      <span class="stag">JavaScript</span>
+      <span class="stag">FFT</span>
+      <span class="stag">Chart.js</span>
+      <span class="stag">DSP</span>
+      <span class="stag">Canvas API</span>
+    </div>
+  </footer>
+
+</div><!-- end .app -->
+
+<!-- ============================================================
+     JAVASCRIPT — DSP ENGINE
+============================================================ -->
+<script>
+'use strict';
+
+/* ============================================
+   STATE
+============================================ */
+const SR_OPTS = [1024, 2048, 4096, 16384];
+const state = {
+  src:       'sine',
+  freq:      120,
+  amp:       1.0,
+  noise:     0.15,
+  srIdx:     2,
+  filter:    'none',
+  fc:        200,
+  order:     4,
+  harmonic2: false,
+  harmonic3: false,
+};
+const get = id => document.getElementById(id);
+
+/* ============================================
+   DSP UTILITIES
+============================================ */
+
+// Cooley-Tukey FFT (in-place, complex array [re,im,re,im,...])
+function fft(x) {
+  const N = x.length / 2;
+  if (N <= 1) return;
+  // bit-reversal
+  for (let i = 1, j = 0; i < N; i++) {
+    let bit = N >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [x[2*i], x[2*j]] = [x[2*j], x[2*i]];
+      [x[2*i+1], x[2*j+1]] = [x[2*j+1], x[2*i+1]];
+    }
+  }
+  for (let len = 2; len <= N; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wRe = Math.cos(ang), wIm = Math.sin(ang);
+    for (let i = 0; i < N; i += len) {
+      let uRe = 1, uIm = 0;
+      for (let j = 0; j < len/2; j++) {
+        const vRe = x[2*(i+j+len/2)]*uRe - x[2*(i+j+len/2)+1]*uIm;
+        const vIm = x[2*(i+j+len/2)]*uIm + x[2*(i+j+len/2)+1]*uRe;
+        x[2*(i+j+len/2)]   = x[2*(i+j)] - vRe;
+        x[2*(i+j+len/2)+1] = x[2*(i+j)+1] - vIm;
+        x[2*(i+j)]   += vRe;
+        x[2*(i+j)+1] += vIm;
+        const newURe = uRe*wRe - uIm*wIm;
+        uIm = uRe*wIm + uIm*wRe;
+        uRe = newURe;
+      }
+    }
+  }
+}
+
+// Generate signal samples
+function generateSignal(N, fs, noiseAmp=0) {
+  const { src, freq, amp, harmonic2, harmonic3 } = state;
+  const samples = new Float32Array(N);
+  const dt = 1/fs;
+
+  for (let i = 0; i < N; i++) {
+    const t = i * dt;
+    const phase = 2 * Math.PI * freq * t;
+    let s = 0;
+
+    switch (src) {
+      case 'sine':
+        s = Math.sin(phase);
+        if (harmonic2) s += 0.5 * Math.sin(2*phase);
+        if (harmonic3) s += 0.33 * Math.sin(3*phase);
+        break;
+      case 'square':
+        s = Math.sign(Math.sin(phase));
+        break;
+      case 'sawtooth':
+        s = 2*(freq*t - Math.floor(freq*t + 0.5));
+        break;
+      case 'triangle':
+        s = 2*Math.abs(2*(freq*t - Math.floor(freq*t+0.5))) - 1;
+        break;
+      case 'chirp': {
+        const f0=10, f1=Math.min(freq, fs/2-10);
+        const Tc = N*dt;
+        const fInst = f0 + (f1-f0)*(i/N);
+        s = Math.sin(2*Math.PI*fInst*t);
+        break;
+      }
+      case 'noise':
+        s = 0;
+        break;
+    }
+
+    samples[i] = amp * s + noiseAmp * (2*Math.random()-1);
+  }
+  return samples;
+}
+
+// Butterworth-like IIR filter (cascaded biquads approximation)
+function applyFilter(samples, fs, type, fc, order) {
+  if (type === 'none') return samples.slice();
+  const result = samples.slice();
+  const stages = Math.max(1, Math.floor(order/2));
+
+  for (let s = 0; s < stages; s++) {
+    // Bilinear transform biquad
+    const ωc = 2 * Math.PI * fc / fs;
+    const Q  = 1 / (2 * Math.sin(Math.PI * (s + 0.5) / (2*stages)));
+    const K  = Math.tan(ωc/2);
+    let b0,b1,b2,a1,a2;
+
+    if (type === 'lpf') {
+      const denom = 1 + K/Q + K*K;
+      b0=K*K/denom; b1=2*b0; b2=b0;
+      a1=2*(K*K-1)/denom; a2=(1-K/Q+K*K)/denom;
+    } else if (type === 'hpf') {
+      const denom = 1 + K/Q + K*K;
+      b0=1/denom; b1=-2*b0; b2=b0;
+      a1=2*(K*K-1)/denom; a2=(1-K/Q+K*K)/denom;
+    } else if (type === 'bpf') {
+      const denom = 1 + K/Q + K*K;
+      b0=(K/Q)/denom; b1=0; b2=-b0;
+      a1=2*(K*K-1)/denom; a2=(1-K/Q+K*K)/denom;
+    } else if (type === 'notch') {
+      const denom = 1 + K/Q + K*K;
+      b0=(1+K*K)/denom; b1=2*(K*K-1)/denom; b2=b0;
+      a1=b1; a2=(1-K/Q+K*K)/denom;
+    } else {
+      return samples.slice();
+    }
+
+    let x1=0,x2=0,y1=0,y2=0;
+    for (let i = 0; i < result.length; i++) {
+      const x0 = result[i];
+      const y0 = b0*x0 + b1*x1 + b2*x2 - a1*y1 - a2*y2;
+      x2=x1; x1=x0; y2=y1; y1=y0;
+      result[i] = y0;
+    }
+  }
+  return result;
+}
+
+// Compute magnitude FFT in dBFS
+function computeFFT(samples) {
+  const N = samples.length;
+  const P2 = Math.pow(2, Math.ceil(Math.log2(N)));
+  const x = new Float32Array(P2*2);
+  // Hanning window
+  for (let i = 0; i < N; i++) {
+    const w = 0.5*(1-Math.cos(2*Math.PI*i/(N-1)));
+    x[2*i]   = samples[i]*w;
+    x[2*i+1] = 0;
+  }
+  fft(x);
+  const half = P2/2;
+  const mags = new Float32Array(half);
+  for (let i = 0; i < half; i++) {
+    const re=x[2*i], im=x[2*i+1];
+    const mag = Math.sqrt(re*re+im*im) / (P2/2);
+    mags[i] = 20 * Math.log10(Math.max(mag, 1e-10));
+  }
+  return mags;
+}
+
+// Find top N peaks in FFT
+function findPeaks(mags, fs, N=5) {
+  const freqRes = (fs/2) / mags.length;
+  const peaks = [];
+  for (let i = 2; i < mags.length-2; i++) {
+    if (mags[i] > mags[i-1] && mags[i] > mags[i+1] &&
+        mags[i] > mags[i-2] && mags[i] > mags[i+2] &&
+        mags[i] > -80) {
+      peaks.push({ freq: i*freqRes, db: mags[i], idx: i });
+    }
+  }
+  return peaks.sort((a,b)=>b.db-a.db).slice(0,N);
+}
+
+function computeMetrics(raw, filtered, mags, fs) {
+  const peaks = findPeaks(mags, fs, 5);
+  const peak  = peaks[0] || { freq: 0, db: -Infinity };
+
+  // SNR
+  const rawPow  = raw.reduce((s,v)=>s+v*v,0)/raw.length;
+  const diff    = raw.map((v,i)=>v-filtered[i]);
+  const noisePow= diff.reduce((s,v)=>s+v*v,0)/diff.length;
+  const snr     = noisePow > 0 ? 10*Math.log10(rawPow/noisePow) : 999;
+
+  // THD (ratio of harmonic powers to fundamental)
+  let fundamental = peak.db;
+  let harmonicPow = 0;
+  for (let i = 1; i < peaks.length; i++) {
+    harmonicPow += Math.pow(10, peaks[i].db/10);
+  }
+  const fundPow = Math.pow(10, fundamental/10);
+  const thd = harmonicPow > 0 ? 100*Math.sqrt(harmonicPow/fundPow) : 0;
+
+  // Noise floor (median of lower 80% of spectrum)
+  const sorted = [...mags].sort((a,b)=>a-b);
+  const noiseFloor = sorted[Math.floor(sorted.length*0.5)];
+
+  // Bandwidth (-3dB)
+  const freqRes = (fs/2)/mags.length;
+  let bwLow=0, bwHigh=0;
+  const thresh = peak.db - 3;
+  for (let i=peak.idx; i>=0; i--) {
+    if (mags[i] < thresh) { bwLow = i*freqRes; break; }
+  }
+  for (let i=peak.idx; i<mags.length; i++) {
+    if (mags[i] < thresh) { bwHigh = i*freqRes; break; }
+  }
+  const bw = Math.max(0, bwHigh - bwLow);
+
+  return { peaks, peak, snr, thd, noiseFloor, bw };
+}
+
+/* ============================================
+   CHART.JS SETUP
+============================================ */
+Chart.defaults.color = '#5a7a9a';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+
+const oscOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 150 },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(3,6,15,0.95)',
+      borderColor: 'rgba(0,229,255,0.3)',
+      borderWidth: 1,
+      titleColor: '#00e5ff',
+      bodyColor: '#ddeeff',
+      padding: 10,
+    }
+  },
+  scales: {
+    x: { grid: { color:'rgba(0,229,255,0.05)' }, ticks: { maxTicksLimit:8, font:{family:'JetBrains Mono',size:9} } },
+    y: { grid: { color:'rgba(0,229,255,0.05)' }, ticks: { font:{family:'JetBrains Mono',size:9} } }
+  }
+};
+
+function makeDataset(color, dash=[]) {
+  return {
+    data: [], borderColor: color, borderWidth: 2,
+    pointRadius: 0, tension: 0.3, fill: false,
+    borderDash: dash,
+  };
+}
+
+// Time domain chart
+const timeCtx = get('timeChart').getContext('2d');
+const timeChart = new Chart(timeCtx, {
+  type: 'line',
+  data: { labels:[], datasets:[
+    { ...makeDataset('#00e5ff'), label:'Raw' },
+    { ...makeDataset('#ff00aa',[5,3]), label:'Filtered' },
+  ]},
+  options: {
+    ...oscOptions,
+    scales: {
+      ...oscOptions.scales,
+      x: { ...oscOptions.scales.x, title:{display:true,text:'Time (ms)',color:'#5a7a9a',font:{size:10}} },
+      y: { ...oscOptions.scales.y, title:{display:true,text:'Amplitude (V)',color:'#5a7a9a',font:{size:10}} }
+    }
+  }
+});
+
+// Frequency spectrum
+const freqCtx = get('freqChart').getContext('2d');
+const freqChart = new Chart(freqCtx, {
+  type: 'line',
+  data: { labels:[], datasets:[
+    { ...makeDataset('#00e5ff'), fill:{ target:'origin', above:'rgba(0,229,255,0.06)' }, label:'Raw FFT', tension:0 },
+    { ...makeDataset('#ff00aa',[4,2]), label:'Filtered FFT', tension:0 },
+    { ...makeDataset('#ffaa00',[3,3]), label:'Noise Floor', tension:0 },
+  ]},
+  options: {
+    ...oscOptions,
+    scales: {
+      ...oscOptions.scales,
+      x: { ...oscOptions.scales.x, title:{display:true,text:'Frequency (Hz)',color:'#5a7a9a',font:{size:10}} },
+      y: { ...oscOptions.scales.y, title:{display:true,text:'Magnitude (dBFS)',color:'#5a7a9a',font:{size:10}}, min:-100 }
+    }
+  }
+});
+
+// Before chart
+const beforeCtx  = get('beforeChart').getContext('2d');
+const beforeChart = new Chart(beforeCtx, {
+  type:'line',
+  data:{ labels:[], datasets:[{ ...makeDataset('#00e5ff'), label:'Raw' }] },
+  options: {
+    ...oscOptions,
+    scales: {
+      x: { display:false },
+      y: { grid:{color:'rgba(0,229,255,0.05)'}, ticks:{font:{family:'JetBrains Mono',size:9}} }
+    }
+  }
+});
+
+// After chart
+const afterCtx  = get('afterChart').getContext('2d');
+const afterChart = new Chart(afterCtx, {
+  type:'line',
+  data:{ labels:[], datasets:[{ ...makeDataset('#ff00aa'), label:'Filtered' }] },
+  options: {
+    ...oscOptions,
+    scales: {
+      x: { display:false },
+      y: { grid:{color:'rgba(0,229,255,0.05)'}, ticks:{font:{family:'JetBrains Mono',size:9}} }
+    }
+  }
+});
+
+// Compare Freq chart
+const compareFreqCtx = get('compareFreqChart').getContext('2d');
+const compareFreqChart = new Chart(compareFreqCtx, {
+  type:'line',
+  data:{ labels:[], datasets:[
+    { ...makeDataset('#00e5ff'), label:'Raw', tension:0 },
+    { ...makeDataset('#ff00aa',[4,2]), label:'Filtered', tension:0 },
+  ]},
+  options: {
+    ...oscOptions,
+    scales: {
+      x: { ...oscOptions.scales.x, title:{display:true,text:'Frequency (Hz)',color:'#5a7a9a',font:{size:9}} },
+      y: { ...oscOptions.scales.y, title:{display:true,text:'dBFS',color:'#5a7a9a',font:{size:9}}, min:-100 }
+    }
+  }
+});
+
+/* ============================================
+   WATERFALL SPECTROGRAM
+============================================ */
+const wfCanvas = get('waterfallCanvas');
+let wfHistory = [];
+const WF_ROWS = 60;
+
+function pushWaterfall(mags, numBins=256) {
+  // Downsample mags to numBins
+  const step = Math.floor(mags.length / numBins);
+  const row = new Float32Array(numBins);
+  for (let i=0;i<numBins;i++) {
+    let s=0;
+    for(let j=0;j<step;j++) s+=mags[i*step+j]||0;
+    row[i]=s/step;
+  }
+  wfHistory.unshift(row);
+  if (wfHistory.length > WF_ROWS) wfHistory.pop();
+}
+
+function drawWaterfall() {
+  const dpr = window.devicePixelRatio||1;
+  const rect = wfCanvas.getBoundingClientRect();
+  wfCanvas.width  = rect.width  * dpr;
+  wfCanvas.height = rect.height * dpr;
+  const ctx = wfCanvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=rect.height;
+  const rows = wfHistory.length;
+  if (!rows) return;
+  const rowH = H/WF_ROWS;
+  const numBins = wfHistory[0].length;
+  const colW = W/numBins;
+
+  for (let r=0;r<rows;r++) {
+    for (let b=0;b<numBins;b++) {
+      const val = Math.max(0, Math.min(1, (wfHistory[r][b]+100)/80));
+      ctx.fillStyle = spectralColor(val);
+      ctx.fillRect(b*colW, r*rowH, colW+1, rowH+1);
+    }
+  }
+}
+
+function spectralColor(v) {
+  // Purple → Cyan → Yellow
+  if (v < 0.33) {
+    const t=v/0.33;
+    return `rgb(${Math.round(100+t*0)},${Math.round(0+t*150)},${Math.round(180+t*75)})`;
+  } else if (v < 0.67) {
+    const t=(v-0.33)/0.34;
+    return `rgb(${Math.round(t*50)},${Math.round(150+t*100)},${Math.round(255-t*100)})`;
+  } else {
+    const t=(v-0.67)/0.33;
+    return `rgb(${Math.round(50+t*200)},${Math.round(250-t*50)},${Math.round(155-t*155)})`;
+  }
+}
+
+/* ============================================
+   UPDATE ENGINE
+============================================ */
+function update() {
+  const fs = SR_OPTS[state.srIdx];
+  const N  = Math.min(fs, 2048); // samples to display
+  const noiseAmp = state.amp * (state.noise/100);
+
+  const raw      = generateSignal(N, fs, noiseAmp);
+  const filtered = applyFilter(raw, fs, state.filter, state.fc, state.order);
+
+  const rawMags  = computeFFT(raw);
+  const filtMags = computeFFT(filtered);
+  const metrics  = computeMetrics(raw, filtered, rawMags, fs);
+  const freqRes  = (fs/2) / rawMags.length;
+
+  // ——— Time domain chart ———
+  const displayN = Math.min(N, 512);
+  const timeLabels = Array.from({length:displayN}, (_,i)=>((i/fs)*1000).toFixed(2));
+  timeChart.data.labels = timeLabels;
+  timeChart.data.datasets[0].data = Array.from(raw.subarray(0,displayN));
+  timeChart.data.datasets[1].data = Array.from(filtered.subarray(0,displayN));
+  timeChart.update('none');
+
+  // ——— Frequency spectrum ———
+  const fLabels = Array.from({length:rawMags.length}, (_,i)=>Math.round(i*freqRes));
+  const noiseFloorLine = new Array(rawMags.length).fill(metrics.noiseFloor);
+  freqChart.data.labels = fLabels;
+  freqChart.data.datasets[0].data = Array.from(rawMags);
+  freqChart.data.datasets[1].data = Array.from(filtMags);
+  freqChart.data.datasets[2].data = noiseFloorLine;
+  freqChart.update('none');
+
+  // ——— Before/After ———
+  beforeChart.data.labels = timeLabels;
+  beforeChart.data.datasets[0].data = Array.from(raw.subarray(0,displayN));
+  beforeChart.update('none');
+  afterChart.data.labels = timeLabels;
+  afterChart.data.datasets[0].data = Array.from(filtered.subarray(0,displayN));
+  afterChart.update('none');
+
+  compareFreqChart.data.labels = fLabels;
+  compareFreqChart.data.datasets[0].data = Array.from(rawMags);
+  compareFreqChart.data.datasets[1].data = Array.from(filtMags);
+  compareFreqChart.update('none');
+
+  // ——— Waterfall ———
+  pushWaterfall(rawMags);
+  drawWaterfall();
+
+  // ——— Metrics ———
+  const fmtF = f => f>999 ? (f/1000).toFixed(2)+'k' : f.toFixed(1);
+  get('mvPeakF').textContent = fmtF(metrics.peak.freq);
+  get('mvPeakP').textContent = metrics.peak.db.toFixed(1);
+  get('mvSNR').textContent   = isFinite(metrics.snr) && metrics.snr<999 ? metrics.snr.toFixed(1) : '∞';
+  get('mvTHD').textContent   = metrics.thd.toFixed(2);
+  get('mvBW').textContent    = fmtF(metrics.bw);
+  get('mvFloor').textContent = metrics.noiseFloor.toFixed(1);
+
+  get('tbSignal').textContent    = state.src.charAt(0).toUpperCase()+state.src.slice(1);
+  get('tbFilter').textContent    = state.filter==='none'?'None':state.filter.toUpperCase();
+  get('tbSampleRate').textContent= fs+' Hz';
+  get('tbSNR').textContent       = isFinite(metrics.snr)&&metrics.snr<999 ? metrics.snr.toFixed(1)+' dB':'∞';
+  get('tbPeak').textContent      = fmtF(metrics.peak.freq)+' Hz';
+
+  // ——— Peak badges ———
+  const peaksRow = get('peaksRow');
+  peaksRow.innerHTML = '';
+  metrics.peaks.forEach((p,i) => {
+    const b = document.createElement('div');
+    b.className = 'peak-badge';
+    b.innerHTML = `<span class="peak-rank">#${i+1}</span>${fmtF(p.freq)} Hz <span style="color:var(--text-muted);font-size:9px;">${p.db.toFixed(1)}dB</span>`;
+    peaksRow.appendChild(b);
+  });
+}
+
+/* ============================================
+   SLIDER UTILITIES
+============================================ */
+function setPct(el) {
+  const min=+el.min, max=+el.max, val=+el.value;
+  el.style.setProperty('--pct', ((val-min)/(max-min)*100).toFixed(1)+'%');
+}
+
+/* ============================================
+   EVENT WIRING
+============================================ */
+
+// Source buttons
+get('sourceGrid').querySelectorAll('.source-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    get('sourceGrid').querySelectorAll('.source-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.src = btn.dataset.src;
+    update();
+  });
+});
+
+// Filter buttons
+get('filterRow').querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    get('filterRow').querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.filter = btn.dataset.filt;
+    update();
+  });
+});
+
+// Viz tabs
+get('vizTabs').querySelectorAll('.viz-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    get('vizTabs').querySelectorAll('.viz-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.viz-panel').forEach(p=>p.classList.remove('active'));
+    get('tab-'+btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'spectrogram') drawWaterfall();
+  });
+});
+
+// Toggles
+get('toggleHarmonic').addEventListener('change', e => { state.harmonic2=e.target.checked; update(); });
+get('toggleHarmonic3').addEventListener('change', e => { state.harmonic3=e.target.checked; update(); });
+
+// Sliders
+[
+  ['sliderFreq',  v => { state.freq=+v; get('valFreq').textContent=v+' Hz'; }],
+  ['sliderAmp',   v => { state.amp=+v;  get('valAmp').textContent=(+v).toFixed(2)+' V'; }],
+  ['sliderNoise', v => { state.noise=+v; get('valNoise').textContent=v+'%'; }],
+  ['sliderSR',    v => { state.srIdx=+v; get('valSR').textContent=SR_OPTS[+v]+' Hz'; }],
+  ['sliderFc',    v => { state.fc=+v;   get('valFc').textContent=v+' Hz'; }],
+  ['sliderOrder', v => { state.order=+v; get('valOrder').textContent=v+'th'; }],
+].forEach(([id,fn])=>{
+  const el=get(id);
+  el.addEventListener('input',()=>{ fn(el.value); setPct(el); update(); });
+  setPct(el);
+});
+
+// Export CSV
+get('btnExportCSV').addEventListener('click',()=>{
+  const fs=SR_OPTS[state.srIdx], N=Math.min(fs,2048);
+  const raw=generateSignal(N,fs,state.amp*(state.noise/100));
+  const filt=applyFilter(raw,fs,state.filter,state.fc,state.order);
+  const rows=['time_ms,raw_V,filtered_V'];
+  for(let i=0;i<N;i++) rows.push(`${(i/fs*1000).toFixed(4)},${raw[i].toFixed(6)},${filt[i].toFixed(6)}`);
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`signal_${state.src}_${state.freq}Hz.csv`});
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+get('btnExportFFT').addEventListener('click',()=>{
+  const fs=SR_OPTS[state.srIdx], N=Math.min(fs,2048);
+  const raw=generateSignal(N,fs,state.amp*(state.noise/100));
+  const mags=computeFFT(raw);
+  const freqRes=(fs/2)/mags.length;
+  const rows=['frequency_Hz,magnitude_dBFS'];
+  for(let i=0;i<mags.length;i++) rows.push(`${(i*freqRes).toFixed(2)},${mags[i].toFixed(4)}`);
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`fft_${state.src}_${state.freq}Hz.csv`});
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+window.addEventListener('resize',()=>drawWaterfall());
+
+/* ============================================
+   INIT
+============================================ */
+update();
+// Continuous waterfall update
+setInterval(()=>{ if(document.getElementById('tab-spectrogram').classList.contains('active')) update(); }, 500);
+</script>
+</body>
+</html>

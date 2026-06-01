@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCB Thermal Heatmap Simulator | Project 8.3</title>
+  <meta name="description" content="Interactive PCB Thermal Heatmap Simulator using 2D finite difference heat diffusion. Place components, visualize thermal gradients, detect hotspots in real-time." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-deep: #050a0f;
+      --bg-panel: rgba(10, 18, 28, 0.85);
+      --bg-card: rgba(15, 25, 40, 0.75);
+      --neon-orange: #ff6b00;
+      --neon-red: #ff2244;
+      --neon-yellow: #ffd700;
+      --neon-cyan: #00e5ff;
+      --glass-border: rgba(255, 107, 0, 0.18);
+      --glass-border-hover: rgba(255, 107, 0, 0.45);
+      --text-primary: #f0f4ff;
+      --text-secondary: #8899bb;
+      --text-value: #ffd700;
+      --shadow-orange: 0 0 24px rgba(255,107,0,0.35);
+      --shadow-red: 0 0 24px rgba(255,34,68,0.35);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Animated grid background ── */
+    #bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,107,0,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,107,0,0.035) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridPulse 8s ease-in-out infinite;
+    }
+    @keyframes gridPulse {
+      0%,100% { opacity:0.5; }
+      50% { opacity:1; }
+    }
+
+    /* ── Floating particles canvas ── */
+    #particles { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+    /* ── Header ── */
+    header {
+      position: relative; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(5,10,15,0.92);
+      border-bottom: 1px solid rgba(255,107,0,0.22);
+      backdrop-filter: blur(20px);
+      flex-shrink: 0;
+    }
+    .header-left { display:flex; align-items:center; gap:14px; }
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--neon-orange), var(--neon-red));
+      border-radius: 10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(255,107,0,0.6);
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%,100%{ box-shadow: 0 0 20px rgba(255,107,0,0.6); }
+      50%{ box-shadow: 0 0 40px rgba(255,107,0,0.9), 0 0 60px rgba(255,34,68,0.4); }
+    }
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.35rem; font-weight: 900;
+      background: linear-gradient(90deg, var(--neon-orange), var(--neon-yellow), var(--neon-red));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1px;
+    }
+    .header-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; color: var(--text-secondary);
+      background: rgba(255,107,0,0.08);
+      border: 1px solid rgba(255,107,0,0.2);
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .header-right { display:flex; align-items:center; gap:12px; }
+
+    /* Status bar */
+    .status-bar {
+      display:flex; gap:20px; align-items:center;
+      font-family: 'JetBrains Mono', monospace; font-size:0.78rem;
+    }
+    .status-item { display:flex; align-items:center; gap:6px; }
+    .status-dot {
+      width:7px; height:7px; border-radius:50%;
+      background: var(--neon-orange);
+      box-shadow: 0 0 8px var(--neon-orange);
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    .status-val { color: var(--neon-yellow); font-weight:600; }
+
+    /* ── Main layout ── */
+    #app {
+      position:relative; z-index:5;
+      display:flex; flex:1; overflow:hidden;
+      gap:0;
+    }
+
+    /* ── Left Control Panel ── */
+    #control-panel {
+      width: 280px; min-width:260px;
+      display:flex; flex-direction:column; gap:10px;
+      padding: 14px 12px;
+      background: rgba(5,10,15,0.88);
+      border-right: 1px solid rgba(255,107,0,0.15);
+      overflow-y:auto; overflow-x:hidden;
+      backdrop-filter: blur(20px);
+      flex-shrink:0;
+    }
+    #control-panel::-webkit-scrollbar { width:4px; }
+    #control-panel::-webkit-scrollbar-track { background:transparent; }
+    #control-panel::-webkit-scrollbar-thumb { background:rgba(255,107,0,0.3); border-radius:2px; }
+
+    .panel-section {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.3s;
+    }
+    .panel-section:hover { border-color: var(--glass-border-hover); }
+
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem; font-weight: 700;
+      color: var(--neon-orange);
+      text-transform: uppercase; letter-spacing:2px;
+      margin-bottom: 10px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .section-title::before {
+      content:''; display:block;
+      width:3px; height:12px;
+      background: var(--neon-orange);
+      border-radius: 2px;
+      box-shadow: 0 0 6px var(--neon-orange);
+    }
+
+    .control-row { margin-bottom: 10px; }
+    .control-label {
+      display:flex; justify-content:space-between; align-items:center;
+      font-size: 0.76rem; color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+    .control-label span:last-child {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--neon-yellow); font-size:0.78rem;
+    }
+
+    input[type=range] {
+      -webkit-appearance:none; width:100%; height:4px;
+      background: rgba(255,107,0,0.15);
+      border-radius:4px; outline:none; cursor:pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:14px; height:14px;
+      border-radius:50%; cursor:pointer;
+      background: radial-gradient(circle, var(--neon-yellow), var(--neon-orange));
+      box-shadow: 0 0 10px var(--neon-orange);
+      transition: box-shadow 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 18px var(--neon-orange), 0 0 30px var(--neon-yellow);
+    }
+
+    select {
+      width:100%;
+      background: rgba(10,18,28,0.9);
+      border: 1px solid rgba(255,107,0,0.3);
+      color: var(--text-primary);
+      font-family:'Inter',sans-serif; font-size:0.82rem;
+      padding: 7px 10px; border-radius:8px; outline:none;
+      cursor:pointer; transition: border-color 0.2s;
+    }
+    select:hover, select:focus { border-color: var(--neon-orange); }
+    select option { background:#0a121c; }
+
+    .btn {
+      width:100%; padding:9px 14px;
+      border:none; border-radius:8px; cursor:pointer;
+      font-family:'Inter',sans-serif; font-size:0.83rem; font-weight:600;
+      transition: all 0.2s; letter-spacing:0.5px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-orange), #e55a00);
+      color:#fff;
+      box-shadow: 0 0 16px rgba(255,107,0,0.4);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 28px rgba(255,107,0,0.7), 0 0 50px rgba(255,107,0,0.3);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: rgba(255,34,68,0.12);
+      color: var(--neon-red);
+      border: 1px solid rgba(255,34,68,0.35);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,34,68,0.25);
+      box-shadow: 0 0 16px rgba(255,34,68,0.4);
+    }
+    .btn-accent {
+      background: rgba(255,215,0,0.1);
+      color: var(--neon-yellow);
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+    .btn-accent:hover {
+      background: rgba(255,215,0,0.2);
+      box-shadow: 0 0 16px rgba(255,215,0,0.3);
+    }
+    .btn-gap { display:flex; gap:8px; }
+    .btn-gap .btn { flex:1; }
+
+    /* Metrics */
+    .metric-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:8px;
+    }
+    .metric-card {
+      background: rgba(5,10,15,0.7);
+      border: 1px solid rgba(255,107,0,0.12);
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align:center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .metric-card:hover {
+      border-color: rgba(255,107,0,0.35);
+      box-shadow: 0 0 12px rgba(255,107,0,0.15);
+    }
+    .metric-label { font-size:0.62rem; color:var(--text-secondary); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px; }
+    .metric-val {
+      font-family:'JetBrains Mono',monospace;
+      font-size:1rem; font-weight:600;
+      color: var(--neon-yellow);
+    }
+    .metric-val.hot { color:var(--neon-red); animation: hotPulse 1s ease-in-out infinite; }
+    @keyframes hotPulse { 0%,100%{text-shadow:0 0 8px var(--neon-red);} 50%{text-shadow:0 0 20px var(--neon-red),0 0 40px rgba(255,34,68,0.5);} }
+
+    /* ── Center canvas area ── */
+    #canvas-area {
+      flex:1; display:flex; flex-direction:column;
+      padding: 14px;
+      gap:12px;
+      overflow:hidden;
+      position:relative;
+    }
+
+    .canvas-wrapper {
+      flex:1;
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      overflow:hidden;
+      position:relative;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 40px rgba(255,107,0,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .canvas-wrapper:hover { border-color: rgba(255,107,0,0.3); }
+
+    #pcbCanvas {
+      display:block;
+      cursor: crosshair;
+      width:100%; height:100%;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position:fixed;
+      background: rgba(5,10,15,0.95);
+      border: 1px solid var(--neon-orange);
+      border-radius: 10px;
+      padding: 10px 14px;
+      pointer-events:none;
+      z-index:1000;
+      font-family:'JetBrains Mono',monospace;
+      font-size:0.78rem;
+      line-height:1.6;
+      box-shadow: 0 0 24px rgba(255,107,0,0.4);
+      display:none;
+      backdrop-filter: blur(20px);
+    }
+    #tooltip .tt-temp { color:var(--neon-orange); font-size:1rem; font-weight:700; }
+    #tooltip .tt-label { color:var(--text-secondary); }
+    #tooltip .tt-val { color:var(--neon-yellow); }
+
+    /* Chart area */
+    .chart-wrapper {
+      height: 160px;
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 10px 16px 6px;
+      backdrop-filter: blur(10px);
+      flex-shrink:0;
+    }
+    .chart-title {
+      font-family:'Orbitron',sans-serif;
+      font-size:0.62rem; font-weight:700;
+      color:var(--neon-orange);
+      letter-spacing:2px; text-transform:uppercase;
+      margin-bottom:6px;
+    }
+    .chart-canvas-container { height:110px; }
+
+    /* ── Right side panel ── */
+    #right-panel {
+      width: 220px; min-width:200px;
+      display:flex; flex-direction:column;
+      gap:10px; padding: 14px 12px;
+      background: rgba(5,10,15,0.88);
+      border-left: 1px solid rgba(255,107,0,0.15);
+      overflow-y:auto;
+      backdrop-filter: blur(20px);
+      flex-shrink:0;
+    }
+    #right-panel::-webkit-scrollbar { width:4px; }
+    #right-panel::-webkit-scrollbar-track { background:transparent; }
+    #right-panel::-webkit-scrollbar-thumb { background:rgba(255,107,0,0.3); border-radius:2px; }
+
+    /* Color scale legend */
+    #color-legend {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      backdrop-filter: blur(10px);
+    }
+    .legend-title {
+      font-family:'Orbitron',sans-serif;
+      font-size:0.62rem; font-weight:700;
+      color:var(--neon-orange); letter-spacing:2px;
+      text-transform:uppercase; margin-bottom:10px;
+    }
+    .legend-bar-wrap {
+      display:flex; gap:10px; align-items:stretch; height:220px;
+    }
+    #legendCanvas { flex:1; border-radius:6px; width:30px; }
+    .legend-labels {
+      display:flex; flex-direction:column;
+      justify-content:space-between;
+      font-family:'JetBrains Mono',monospace;
+      font-size:0.68rem; color:var(--text-secondary);
+    }
+    .legend-labels span { line-height:1; }
+
+    /* Hotspot info */
+    .hotspot-info {
+      background: var(--bg-card);
+      border: 1px solid rgba(255,34,68,0.2);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .hotspot-count {
+      font-family:'JetBrains Mono',monospace;
+      font-size:2rem; font-weight:700;
+      color:var(--neon-red);
+      text-align:center;
+      text-shadow: 0 0 20px rgba(255,34,68,0.6);
+    }
+    .hotspot-subtitle { font-size:0.7rem; color:var(--text-secondary); text-align:center; margin-top:2px; }
+
+    /* Simulation state badge */
+    #sim-state-badge {
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      background: rgba(255,107,0,0.08);
+      border: 1px solid rgba(255,107,0,0.2);
+      border-radius:8px; padding:8px;
+      font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+    }
+    .sim-dot {
+      width:8px; height:8px; border-radius:50%;
+      background:var(--neon-orange);
+      box-shadow: 0 0 8px var(--neon-orange);
+    }
+    #sim-state-badge.paused .sim-dot { background:#666; box-shadow:none; animation:none; }
+    #sim-state-badge.running .sim-dot { animation: blink 0.8s infinite; }
+
+    /* Instructions mini card */
+    .instructions {
+      background: var(--bg-card);
+      border: 1px solid rgba(255,215,0,0.12);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size:0.72rem; line-height:1.7;
+      color:var(--text-secondary);
+    }
+    .instructions strong { color:var(--neon-yellow); }
+    .instructions .inst-row { display:flex; gap:6px; margin-bottom:2px; }
+    .inst-key {
+      display:inline-block;
+      background:rgba(255,107,0,0.1); border:1px solid rgba(255,107,0,0.3);
+      border-radius:4px; padding:1px 6px;
+      font-family:'JetBrains Mono',monospace; font-size:0.68rem;
+      color:var(--neon-orange); white-space:nowrap;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 1300px) {
+      #right-panel { display:none; }
+    }
+    @media (max-width: 900px) {
+      #control-panel { width:220px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div id="bg-grid"></div>
+<canvas id="particles"></canvas>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <div class="logo-icon">🔥</div>
+    <div>
+      <h1>PCB Thermal Heatmap Simulator</h1>
+      <div class="header-badge">Project 8.3 · Electronics Engineering · Finite Difference Method</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-bar">
+      <div class="status-item"><div class="status-dot"></div><span>MAX:</span><span class="status-val" id="stat-max">--°C</span></div>
+      <div class="status-item"><span>FPS:</span><span class="status-val" id="stat-fps">--</span></div>
+      <div class="status-item"><span>ITER:</span><span class="status-val" id="stat-iter">0</span></div>
+      <div class="status-item"><span>HOTSPOTS:</span><span class="status-val" id="stat-hot">0</span></div>
+    </div>
+    <button class="btn btn-accent" style="width:auto;padding:8px 16px;" id="exportBtn">⬇ Export PNG</button>
+  </div>
+</header>
+
+<!-- Main App -->
+<div id="app">
+
+  <!-- Left Control Panel -->
+  <div id="control-panel">
+
+    <!-- Simulation Control -->
+    <div class="panel-section">
+      <div class="section-title">Simulation Control</div>
+      <div id="sim-state-badge running" style="margin-bottom:10px;">
+        <div class="sim-dot"></div>
+        <span id="sim-label">RUNNING</span>
+      </div>
+      <div class="btn-gap">
+        <button class="btn btn-primary" id="pauseBtn">⏸ Pause</button>
+        <button class="btn btn-secondary" id="clearBtn">🗑 Clear</button>
+      </div>
+    </div>
+
+    <!-- Component Selector -->
+    <div class="panel-section">
+      <div class="section-title">Component Type</div>
+      <div class="control-row">
+        <div class="control-label"><span>Select Component</span></div>
+        <select id="componentSelect">
+          <option value="heat_point">🔥 Heat Source (1×1)</option>
+          <option value="resistor">🟡 Resistor (1×1 Low)</option>
+          <option value="led">💡 LED (1×1 Low)</option>
+          <option value="mosfet">⚡ MOSFET (2×2 Med)</option>
+          <option value="cpu">🧠 CPU (3×3 High)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Thermal Parameters -->
+    <div class="panel-section">
+      <div class="section-title">Thermal Parameters</div>
+
+      <div class="control-row">
+        <div class="control-label"><span>Thermal Conductivity</span><span id="kVal">1.0 W/m·K</span></div>
+        <input type="range" id="conductivity" min="0.1" max="10" step="0.1" value="1.0" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-label"><span>Ambient Temperature</span><span id="ambVal">25°C</span></div>
+        <input type="range" id="ambient" min="0" max="40" step="1" value="25" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-label"><span>Heat Source Power</span><span id="powerVal">150W</span></div>
+        <input type="range" id="sourcePower" min="10" max="500" step="10" value="150" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-label"><span>Hotspot Threshold</span><span id="threshVal">70°C</span></div>
+        <input type="range" id="threshold" min="0" max="100" step="1" value="70" />
+      </div>
+    </div>
+
+    <!-- Live Metrics -->
+    <div class="panel-section">
+      <div class="section-title">Live Metrics</div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Max Temp</div>
+          <div class="metric-val" id="m-max">--°C</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Min Temp</div>
+          <div class="metric-val" id="m-min">--°C</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Average</div>
+          <div class="metric-val" id="m-avg">--°C</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Gradient</div>
+          <div class="metric-val" id="m-grad">--°C</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Hotspots</div>
+          <div class="metric-val hot" id="m-hot">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Iterations</div>
+          <div class="metric-val" id="m-iter">0</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Center Canvas + Chart -->
+  <div id="canvas-area">
+    <div class="canvas-wrapper" id="canvasWrapper">
+      <canvas id="pcbCanvas"></canvas>
+    </div>
+    <div class="chart-wrapper">
+      <div class="chart-title">📈 Temperature Cross-Section (Center Row)</div>
+      <div class="chart-canvas-container">
+        <canvas id="profileChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div id="right-panel">
+    <!-- Color Legend -->
+    <div id="color-legend">
+      <div class="legend-title">🌡 Temp Scale</div>
+      <div class="legend-bar-wrap">
+        <canvas id="legendCanvas"></canvas>
+        <div class="legend-labels">
+          <span style="color:#ffffff">100°C</span>
+          <span style="color:#ff0000">80°C</span>
+          <span style="color:#ff6b00">60°C</span>
+          <span style="color:#ffd700">40°C</span>
+          <span style="color:#39ff14">20°C</span>
+          <span style="color:#00e5ff">10°C</span>
+          <span style="color:#001aff">0°C</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hotspot counter -->
+    <div class="hotspot-info">
+      <div class="section-title" style="justify-content:center;">⚠ Hotspots</div>
+      <div class="hotspot-count" id="hotspot-big">0</div>
+      <div class="hotspot-subtitle">cells above threshold</div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="instructions">
+      <div class="section-title" style="font-size:0.6rem; letter-spacing:1.5px;">How to Use</div>
+      <div class="inst-row"><span class="inst-key">L-Click</span> Place component</div>
+      <div class="inst-row"><span class="inst-key">R-Click</span> Remove source</div>
+      <div class="inst-row"><span class="inst-key">Hover</span> Show cell temp</div>
+      <div class="inst-row"><span class="inst-key">Pause</span> Freeze simulation</div>
+      <div class="inst-row"><span class="inst-key">Export</span> Save as PNG</div>
+      <br/>
+      <strong>Physics:</strong> Gauss-Seidel<br/>
+      2D heat diffusion FDM<br/>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.67rem;color:var(--neon-yellow);">T = (∑T_neighbors)/4</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip">
+  <div class="tt-temp" id="tt-temp">--°C</div>
+  <div><span class="tt-label">Cell: </span><span class="tt-val" id="tt-coord">(0,0)</span></div>
+  <div><span class="tt-label">Type: </span><span class="tt-val" id="tt-type">Empty</span></div>
+  <div><span class="tt-label">Status: </span><span class="tt-val" id="tt-status">Normal</span></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// PARTICLES — floating heat wave dots
+// ═══════════════════════════════════════════════════════
+(function initParticles() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const COLORS = ['#ff6b00','#ff2244','#ffd700','#ff4500','#ff8c00'];
+  function spawn() {
+    return {
+      x: Math.random() * W,
+      y: H + 20,
+      r: Math.random() * 3 + 1,
+      speed: Math.random() * 0.6 + 0.2,
+      drift: (Math.random() - 0.5) * 0.4,
+      alpha: Math.random() * 0.6 + 0.2,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: Math.random() * 0.02 + 0.005,
+    };
+  }
+
+  for (let i = 0; i < 80; i++) {
+    const p = spawn();
+    p.y = Math.random() * H;
+    particles.push(p);
+  }
+
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (let p of particles) {
+      p.y -= p.speed;
+      p.wobble += p.wobbleSpeed;
+      p.x += Math.sin(p.wobble) * 0.5 + p.drift;
+      if (p.y < -10) Object.assign(p, spawn());
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = p.r * 4;
+      ctx.fill();
+      ctx.restore();
+    }
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+// ═══════════════════════════════════════════════════════
+// LEGEND CANVAS
+// ═══════════════════════════════════════════════════════
+(function drawLegend() {
+  const canvas = document.getElementById('legendCanvas');
+  if (!canvas) return;
+  canvas.width = 30;
+  canvas.height = 220;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 220);
+  grad.addColorStop(0,   '#ffffff');
+  grad.addColorStop(0.1, '#ff0000');
+  grad.addColorStop(0.3, '#ff6b00');
+  grad.addColorStop(0.5, '#ffd700');
+  grad.addColorStop(0.7, '#39ff14');
+  grad.addColorStop(0.85,'#00e5ff');
+  grad.addColorStop(1,   '#001aff');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 30, 220);
+})();
+
+// ═══════════════════════════════════════════════════════
+// SIMULATION CORE
+// ═══════════════════════════════════════════════════════
+const COLS = 30, ROWS = 20;
+let conductivity = 1.0;
+let ambient = 25;
+let sourcePower = 150;
+let threshold = 70;
+let paused = false;
+let iterCount = 0;
+
+// Temperature grid
+let T = Array.from({length:ROWS}, () => new Float64Array(COLS).fill(25));
+let Tnew = Array.from({length:ROWS}, () => new Float64Array(COLS).fill(25));
+
+// Sources: map of "r,c" -> { type, power, component }
+const SOURCES = new Map();
+
+// Component definitions
+const COMPONENTS = {
+  heat_point: { name:'Heat Source', w:1, h:1, powerMult:1.0,   color:'#ff6b00' },
+  resistor:   { name:'Resistor',    w:1, h:1, powerMult:0.3,   color:'#ffd700' },
+  led:        { name:'LED',         w:1, h:1, powerMult:0.25,  color:'#00e5ff' },
+  mosfet:     { name:'MOSFET',      w:2, h:2, powerMult:0.65,  color:'#ff9500' },
+  cpu:        { name:'CPU',         w:3, h:3, powerMult:1.0,   color:'#ff2244' },
+};
+
+// New-source pulse animation
+const pulseMap = new Map(); // "r,c" -> { t }
+
+function placeComponent(row, col, type) {
+  const comp = COMPONENTS[type];
+  if (!comp) return;
+  for (let dr = 0; dr < comp.h; dr++) {
+    for (let dc = 0; dc < comp.w; dc++) {
+      const r = row + dr, c = col + dc;
+      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+      const key = `${r},${c}`;
+      SOURCES.set(key, { type, power: sourcePower * comp.powerMult, component: comp.name });
+      pulseMap.set(key, { t: 0 });
+    }
+  }
+}
+
+function removeSource(row, col) {
+  const key = `${row},${col}`;
+  SOURCES.delete(key);
+  pulseMap.delete(key);
+}
+
+function iterateGaussSeidel(steps) {
+  const k = conductivity;
+  for (let s = 0; s < steps; s++) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const key = `${r},${c}`;
+        if (SOURCES.has(key)) {
+          // Heat source temp proportional to power
+          const src = SOURCES.get(key);
+          T[r][c] = Math.min(100, ambient + src.power * 0.16 / Math.max(k, 0.1));
+          continue;
+        }
+        // Boundary: clamp neighbors
+        const top    = r > 0       ? T[r-1][c] : ambient;
+        const bottom = r < ROWS-1  ? T[r+1][c] : ambient;
+        const left   = c > 0       ? T[r][c-1] : ambient;
+        const right  = c < COLS-1  ? T[r][c+1] : ambient;
+        T[r][c] = (top + bottom + left + right) / 4;
+      }
+    }
+    iterCount++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// COLOR MAPPING
+// ═══════════════════════════════════════════════════════
+function tempToColor(t, alpha) {
+  // t: 0..100
+  const norm = Math.max(0, Math.min(1, t / 100));
+  // Gradient stops
+  const stops = [
+    [0,    [0,  26,  255]],
+    [0.15, [0,  229, 255]],
+    [0.35, [57, 255,  20]],
+    [0.55, [255,215,   0]],
+    [0.75, [255,107,   0]],
+    [0.9,  [255,  0,   0]],
+    [1.0,  [255,255, 255]],
+  ];
+  let c0 = stops[0][1], c1 = stops[stops.length-1][1], t0 = 0, t1 = 1;
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (norm >= stops[i][0] && norm <= stops[i+1][0]) {
+      t0 = stops[i][0]; c0 = stops[i][1];
+      t1 = stops[i+1][0]; c1 = stops[i+1][1];
+      break;
+    }
+  }
+  const f = (norm - t0) / Math.max(t1 - t0, 1e-9);
+  const r = Math.round(c0[0] + (c1[0]-c0[0]) * f);
+  const g = Math.round(c0[1] + (c1[1]-c0[1]) * f);
+  const b = Math.round(c0[2] + (c1[2]-c0[2]) * f);
+  return alpha !== undefined ? `rgba(${r},${g},${b},${alpha})` : `rgb(${r},${g},${b})`;
+}
+
+// ═══════════════════════════════════════════════════════
+// CANVAS RENDER
+// ═══════════════════════════════════════════════════════
+const pcbCanvas = document.getElementById('pcbCanvas');
+const ctx = pcbCanvas.getContext('2d');
+let CW, CH, cellW, cellH;
+
+function resizeCanvas() {
+  const wrapper = document.getElementById('canvasWrapper');
+  const rect = wrapper.getBoundingClientRect();
+  pcbCanvas.width  = CW = rect.width;
+  pcbCanvas.height = CH = rect.height;
+  cellW = CW / COLS;
+  cellH = CH / ROWS;
+}
+
+const resizeObs = new ResizeObserver(resizeCanvas);
+resizeObs.observe(document.getElementById('canvasWrapper'));
+resizeCanvas();
+
+let frameCount = 0, lastFPSTime = performance.now();
+let fps = 0;
+let animFrame;
+
+function renderFrame(now) {
+  if (!paused) {
+    iterateGaussSeidel(100);
+  }
+
+  // Clear
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Draw PCB base
+  ctx.fillStyle = '#030608';
+  ctx.fillRect(0, 0, CW, CH);
+
+  let maxT = -Infinity, minT = Infinity, sumT = 0, hotCount = 0;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const t = T[r][c];
+      maxT = Math.max(maxT, t);
+      minT = Math.min(minT, t);
+      sumT += t;
+
+      const x = c * cellW, y = r * cellH;
+      ctx.fillStyle = tempToColor(t);
+      ctx.fillRect(x, y, cellW, cellH);
+
+      // Hotspot overlay
+      if (t >= threshold) {
+        hotCount++;
+        const pulse = 0.3 + 0.25 * Math.abs(Math.sin(now * 0.003 + r + c));
+        ctx.fillStyle = `rgba(255,34,68,${pulse * 0.35})`;
+        ctx.fillRect(x, y, cellW, cellH);
+        // Red border
+        ctx.strokeStyle = `rgba(255,34,68,${0.6 + 0.4 * Math.abs(Math.sin(now * 0.004))})`;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x+0.5, y+0.5, cellW-1, cellH-1);
+      }
+    }
+  }
+
+  // Draw grid lines (subtle)
+  ctx.strokeStyle = 'rgba(255,107,0,0.06)';
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath(); ctx.moveTo(c*cellW, 0); ctx.lineTo(c*cellW, CH); ctx.stroke();
+  }
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath(); ctx.moveTo(0, r*cellH); ctx.lineTo(CW, r*cellH); ctx.stroke();
+  }
+
+  // Draw sources with glow
+  for (const [key, src] of SOURCES) {
+    const [r, c] = key.split(',').map(Number);
+    const comp = COMPONENTS[src.type] || COMPONENTS.heat_point;
+    const x = c * cellW + cellW/2, y = r * cellH + cellH/2;
+
+    // Pulse animation for newly placed sources
+    let pulseExtra = 0;
+    if (pulseMap.has(key)) {
+      const p = pulseMap.get(key);
+      p.t += 0.05;
+      pulseExtra = Math.max(0, 1 - p.t/3) * 15;
+      if (p.t > 3) pulseMap.delete(key);
+    }
+
+    const gR = (cellW * 0.8 + pulseExtra) * (0.8 + 0.2 * Math.abs(Math.sin(now * 0.003 + r + c)));
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, gR);
+    grad.addColorStop(0, comp.color + 'cc');
+    grad.addColorStop(0.4, comp.color + '66');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, gR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Component label
+    if (cellW > 16 && cellH > 12) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = `bold ${Math.min(cellW*0.35, 10)}px JetBrains Mono`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const abbrev = { heat_point:'SRC', resistor:'R', led:'D', mosfet:'Q', cpu:'CPU' };
+      ctx.fillText(abbrev[src.type] || '?', x, y);
+    }
+  }
+
+  // FPS counter
+  frameCount++;
+  if (now - lastFPSTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFPSTime = now;
+  }
+
+  // Update metrics
+  updateMetrics(maxT, minT, sumT / (ROWS*COLS), hotCount);
+
+  animFrame = requestAnimationFrame(renderFrame);
+}
+
+// ═══════════════════════════════════════════════════════
+// METRICS UPDATE
+// ═══════════════════════════════════════════════════════
+let chartUpdateCounter = 0;
+function updateMetrics(maxT, minT, avgT, hotCount) {
+  document.getElementById('m-max').textContent = maxT.toFixed(1) + '°C';
+  document.getElementById('m-min').textContent = minT.toFixed(1) + '°C';
+  document.getElementById('m-avg').textContent = avgT.toFixed(1) + '°C';
+  document.getElementById('m-grad').textContent = (maxT - minT).toFixed(1) + '°C';
+  document.getElementById('m-hot').textContent = hotCount;
+  document.getElementById('m-iter').textContent = iterCount.toLocaleString();
+
+  document.getElementById('stat-max').textContent = maxT.toFixed(1) + '°C';
+  document.getElementById('stat-fps').textContent = fps;
+  document.getElementById('stat-iter').textContent = iterCount.toLocaleString();
+  document.getElementById('stat-hot').textContent = hotCount;
+
+  document.getElementById('hotspot-big').textContent = hotCount;
+  if (hotCount > 0) {
+    document.getElementById('m-hot').classList.add('hot');
+  } else {
+    document.getElementById('m-hot').classList.remove('hot');
+  }
+
+  // Update chart every 10 frames
+  chartUpdateCounter++;
+  if (chartUpdateCounter % 10 === 0) updateProfileChart();
+}
+
+// ═══════════════════════════════════════════════════════
+// PROFILE CHART
+// ═══════════════════════════════════════════════════════
+let profileChart;
+function initChart() {
+  const canvas = document.getElementById('profileChart');
+  profileChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: Array.from({length: COLS}, (_,i) => i),
+      datasets: [{
+        label: 'Temperature (°C)',
+        data: new Array(COLS).fill(ambient),
+        borderColor: '#ff6b00',
+        borderWidth: 2,
+        backgroundColor: 'rgba(255,107,0,0.12)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: '#ffd700',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(5,10,15,0.95)',
+          borderColor: '#ff6b00',
+          borderWidth: 1,
+          titleColor: '#ffd700',
+          bodyColor: '#aab',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => `${ctx.parsed.y.toFixed(1)}°C`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,107,0,0.06)' },
+          ticks: { color: '#556', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 10 },
+          title: { display: true, text: 'Column Index', color: '#556', font: { size: 9 } }
+        },
+        y: {
+          min: 0, max: 105,
+          grid: { color: 'rgba(255,107,0,0.08)' },
+          ticks: { color: '#556', font: { family: 'JetBrains Mono', size: 9 }, callback: v => v + '°' },
+          title: { display: true, text: 'Temp (°C)', color: '#556', font: { size: 9 } }
+        }
+      }
+    }
+  });
+}
+
+function updateProfileChart() {
+  if (!profileChart) return;
+  const midRow = Math.floor(ROWS / 2);
+  const data = [];
+  for (let c = 0; c < COLS; c++) data.push(T[midRow][c]);
+  profileChart.data.datasets[0].data = data;
+  // Dynamic color based on temp
+  const maxInRow = Math.max(...data);
+  const norm = maxInRow / 100;
+  const r = Math.round(255 * Math.min(1, norm * 2));
+  const g = Math.round(107 * (1 - norm));
+  profileChart.data.datasets[0].borderColor = `rgb(${r},${g},0)`;
+  profileChart.update('none');
+}
+
+// ═══════════════════════════════════════════════════════
+// MOUSE INTERACTION
+// ═══════════════════════════════════════════════════════
+const tooltip = document.getElementById('tooltip');
+let hoveredCell = null;
+
+pcbCanvas.addEventListener('mousemove', (e) => {
+  const rect = pcbCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const col = Math.floor(x / cellW);
+  const row = Math.floor(y / cellH);
+  if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+    hoveredCell = { row, col };
+    const t = T[row][col];
+    const key = `${row},${col}`;
+    const src = SOURCES.get(key);
+    document.getElementById('tt-temp').textContent = t.toFixed(2) + '°C';
+    document.getElementById('tt-temp').style.color = tempToColor(t);
+    document.getElementById('tt-coord').textContent = `(${col}, ${row})`;
+    document.getElementById('tt-type').textContent = src ? src.component : 'Empty';
+    document.getElementById('tt-status').textContent = t >= threshold ? '⚠ HOTSPOT' : 'Normal';
+    document.getElementById('tt-status').style.color = t >= threshold ? '#ff2244' : '#aab';
+
+    tooltip.style.display = 'block';
+    let tx = e.clientX + 16, ty = e.clientY - 10;
+    if (tx + 160 > window.innerWidth) tx = e.clientX - 170;
+    if (ty + 100 > window.innerHeight) ty = e.clientY - 110;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top  = ty + 'px';
+  }
+});
+
+pcbCanvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+  hoveredCell = null;
+});
+
+pcbCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+pcbCanvas.addEventListener('mousedown', (e) => {
+  const rect = pcbCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const col = Math.floor(x / cellW);
+  const row = Math.floor(y / cellH);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+
+  if (e.button === 2) {
+    removeSource(row, col);
+  } else {
+    const type = document.getElementById('componentSelect').value;
+    placeComponent(row, col, type);
+  }
+});
+
+// Drag placement
+let isDragging = false;
+pcbCanvas.addEventListener('mousedown', () => isDragging = true);
+window.addEventListener('mouseup', () => isDragging = false);
+pcbCanvas.addEventListener('mousemove', (e) => {
+  if (!isDragging || e.buttons !== 1) return;
+  const rect = pcbCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const col = Math.floor(x / cellW);
+  const row = Math.floor(y / cellH);
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+  const type = document.getElementById('componentSelect').value;
+  // Only drag single-cell types
+  if (['heat_point','resistor','led'].includes(type)) {
+    placeComponent(row, col, type);
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════
+function setupSlider(id, labelId, suffix, varSetter) {
+  const el = document.getElementById(id);
+  const lbl = document.getElementById(labelId);
+  el.addEventListener('input', () => {
+    const v = parseFloat(el.value);
+    lbl.textContent = v + suffix;
+    varSetter(v);
+  });
+}
+
+setupSlider('conductivity', 'kVal', ' W/m·K', v => conductivity = v);
+setupSlider('ambient', 'ambVal', '°C', v => {
+  ambient = v;
+  // Reset non-source cells to new ambient
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (!SOURCES.has(`${r},${c}`)) T[r][c] = v;
+});
+setupSlider('sourcePower', 'powerVal', 'W', v => {
+  sourcePower = v;
+  // Update existing sources
+  for (const [key, src] of SOURCES) {
+    const comp = COMPONENTS[src.type];
+    src.power = v * comp.powerMult;
+  }
+});
+setupSlider('threshold', 'threshVal', '°C', v => threshold = v);
+
+document.getElementById('pauseBtn').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? '▶ Resume' : '⏸ Pause';
+  this.className = paused ? 'btn btn-accent' : 'btn btn-primary';
+  const badge = document.getElementById('sim-state-badge');
+  const label = document.getElementById('sim-label');
+  if (paused) {
+    badge.className = 'paused';
+    badge.style.borderColor = 'rgba(100,100,100,0.3)';
+    label.textContent = 'PAUSED';
+  } else {
+    badge.className = 'running';
+    badge.style.borderColor = 'rgba(255,107,0,0.2)';
+    label.textContent = 'RUNNING';
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  SOURCES.clear();
+  pulseMap.clear();
+  iterCount = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      T[r][c] = ambient;
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  // Render offscreen with title
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width  = pcbCanvas.width;
+  offCanvas.height = pcbCanvas.height + 40;
+  const offCtx = offCanvas.getContext('2d');
+  offCtx.fillStyle = '#050a0f';
+  offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+  offCtx.drawImage(pcbCanvas, 0, 40);
+  offCtx.fillStyle = '#ffd700';
+  offCtx.font = 'bold 14px Orbitron, monospace';
+  offCtx.textAlign = 'center';
+  offCtx.fillText('PCB Thermal Heatmap Simulator — Project 8.3', offCanvas.width/2, 24);
+
+  const link = document.createElement('a');
+  link.download = 'pcb_thermal_heatmap.png';
+  link.href = offCanvas.toDataURL('image/png');
+  link.click();
+});
+
+// ═══════════════════════════════════════════════════════
+// KICK OFF
+// ═══════════════════════════════════════════════════════
+// Pre-seed ambient
+for (let r = 0; r < ROWS; r++)
+  for (let c = 0; c < COLS; c++)
+    T[r][c] = ambient;
+
+initChart();
+requestAnimationFrame(renderFrame);
+</script>
+</body>
+</html>

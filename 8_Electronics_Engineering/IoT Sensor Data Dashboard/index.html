@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoT Sensor Data Dashboard — Project 8.7 | Haris Hussain</title>
+<meta name="description" content="Industrial IoT Sensor Monitoring Dashboard — Real-time simulation of Temperature, Humidity, Pressure, Air Quality, UV Index & GPS tracking. Project 8.7 by Haris Hussain.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-deep:    #030f0f;
+    --bg-mid:     #051818;
+    --bg-card:    rgba(0,255,213,0.04);
+    --bg-card2:   rgba(0,255,136,0.04);
+    --neon-teal:  #00ffd5;
+    --neon-green: #00ff88;
+    --neon-amber: #ffaa00;
+    --neon-red:   #ff4466;
+    --neon-blue:  #00aaff;
+    --text-pri:   #e0fff8;
+    --text-sec:   #7bbfb5;
+    --text-dim:   #3a7070;
+    --border:     rgba(0,255,213,0.15);
+    --border2:    rgba(0,255,136,0.1);
+    --glass:      rgba(3,25,25,0.7);
+    --glass2:     rgba(5,30,30,0.85);
+    --shadow-teal: 0 0 20px rgba(0,255,213,0.15);
+    --shadow-green: 0 0 20px rgba(0,255,136,0.15);
+    --font-head:  'Orbitron', sans-serif;
+    --font-body:  'Inter', sans-serif;
+    --font-mono:  'JetBrains Mono', monospace;
+    --radius:     12px;
+    --radius-lg:  18px;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    background-color: var(--bg-deep);
+    color: var(--text-pri);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ===== NETWORK BG CANVAS ===== */
+  #network-bg {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+    opacity: 0.55;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-mid); }
+  ::-webkit-scrollbar-thumb { background: var(--neon-teal); border-radius: 3px; }
+
+  /* ===== LAYOUT WRAPPER ===== */
+  #app {
+    position: relative; z-index: 1;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+  }
+
+  /* ===== STATUS BAR ===== */
+  #status-bar {
+    background: var(--glass2);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 100;
+    width: 100vw;
+    left: 50%; right: 50%;
+    margin-left: -50vw; margin-right: -50vw;
+    margin-bottom: 0;
+  }
+  .sb-item {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-sec);
+    letter-spacing: 0.04em;
+  }
+  .sb-item .sb-val {
+    color: var(--neon-teal);
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .sb-dot { width:8px; height:8px; border-radius:50%; background:var(--neon-green);
+    box-shadow: 0 0 6px var(--neon-green); animation: pulse-dot 1.5s infinite; }
+  .sb-dot.warn { background:var(--neon-amber); box-shadow:0 0 6px var(--neon-amber); }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+  #sb-time { margin-left: auto; font-family:var(--font-mono); font-size:12px; color:var(--neon-teal); letter-spacing:0.08em; }
+
+  /* ===== HEADER ===== */
+  #header {
+    padding: 30px 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    gap: 16px;
+  }
+  .header-left { display:flex; flex-direction:column; gap:6px; }
+  #header h1 {
+    font-family: var(--font-head);
+    font-size: clamp(18px,3vw,32px);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: linear-gradient(120deg, var(--neon-teal) 0%, var(--neon-green) 50%, var(--neon-amber) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 12px rgba(0,255,213,0.4));
+  }
+  .header-sub {
+    font-size: 12px; color: var(--text-sec); letter-spacing:0.06em;
+    font-family: var(--font-mono);
+  }
+  .header-badge {
+    background: rgba(0,255,213,0.08);
+    border: 1px solid var(--neon-teal);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--neon-teal); letter-spacing:0.1em;
+    box-shadow: var(--shadow-teal);
+    white-space: nowrap;
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .sec-label {
+    font-family: var(--font-head);
+    font-size: 11px; letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--neon-teal);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sec-label::after {
+    content:''; flex:1; height:1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ===== SENSOR CARDS GRID ===== */
+  #sensor-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 18px;
+    margin-bottom: 36px;
+  }
+  .s-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.3s, border-color 0.3s;
+    cursor: default;
+  }
+  .s-card::before {
+    content:''; position:absolute; top:-60%; left:-40%;
+    width:180%; height:180%;
+    background: radial-gradient(ellipse at center, rgba(0,255,213,0.06) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .s-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-teal); }
+  .s-card.warn { border-color: rgba(255,170,0,0.45); box-shadow: 0 0 18px rgba(255,170,0,0.12); }
+  .s-card.warn::before { background: radial-gradient(ellipse at center, rgba(255,170,0,0.07) 0%, transparent 70%); }
+  .s-card.crit { border-color: rgba(255,68,102,0.55); box-shadow: 0 0 22px rgba(255,68,102,0.18); animation: crit-flash 1s infinite alternate; }
+  .s-card.crit::before { background: radial-gradient(ellipse at center, rgba(255,68,102,0.08) 0%, transparent 70%); }
+  @keyframes crit-flash { from{box-shadow:0 0 22px rgba(255,68,102,0.18)} to{box-shadow:0 0 35px rgba(255,68,102,0.38)} }
+
+  /* animate when value updates */
+  .s-card.value-flash { animation: val-flash 0.3s ease; }
+  @keyframes val-flash { 0%{transform:scale(1)} 50%{transform:scale(1.03)} 100%{transform:scale(1)} }
+
+  .card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px; }
+  .card-icon { font-size:26px; line-height:1; filter: drop-shadow(0 0 6px rgba(0,255,213,0.5)); }
+  .card-status-badge {
+    font-family:var(--font-mono); font-size:9px; font-weight:700;
+    letter-spacing:0.15em; text-transform:uppercase;
+    padding: 3px 8px; border-radius:4px;
+    background: rgba(0,255,213,0.1); border:1px solid var(--neon-teal);
+    color: var(--neon-teal);
+  }
+  .card-status-badge.warn { background:rgba(255,170,0,0.1); border-color:var(--neon-amber); color:var(--neon-amber); }
+  .card-status-badge.crit { background:rgba(255,68,102,0.12); border-color:var(--neon-red); color:var(--neon-red); }
+
+  .card-name {
+    font-family:var(--font-body); font-size:11px; font-weight:500;
+    color: var(--text-sec); letter-spacing:0.06em; text-transform:uppercase;
+    margin-bottom:4px;
+  }
+  .card-value-row { display:flex; align-items:baseline; gap:6px; margin-bottom: 8px; }
+  .card-value {
+    font-family: var(--font-mono); font-size:clamp(24px,3.5vw,34px);
+    font-weight:700; color: var(--neon-teal);
+    text-shadow: 0 0 15px rgba(0,255,213,0.5);
+    transition: color 0.3s;
+    letter-spacing:-0.02em;
+    line-height:1;
+  }
+  .card-value.warn { color: var(--neon-amber); text-shadow:0 0 15px rgba(255,170,0,0.5); }
+  .card-value.crit { color: var(--neon-red); text-shadow:0 0 15px rgba(255,68,102,0.5); }
+  .card-unit { font-family:var(--font-mono); font-size:13px; color:var(--text-sec); }
+  .card-trend { font-size:16px; margin-left:4px; }
+  .trend-up { color: var(--neon-red); }
+  .trend-down { color: var(--neon-blue); }
+  .trend-stable { color: var(--text-sec); }
+
+  .card-sparkline { width:100%; height:40px; margin-top:2px; }
+
+  .card-range {
+    display:flex; justify-content:space-between;
+    font-family:var(--font-mono); font-size:9px; color:var(--text-dim);
+    margin-top:6px; letter-spacing:0.04em;
+  }
+
+  /* ===== CHARTS SECTION ===== */
+  #charts-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    gap: 20px;
+    margin-bottom: 36px;
+  }
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position:relative; overflow:hidden;
+  }
+  .chart-card::before {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(135deg, rgba(0,255,213,0.03) 0%, transparent 60%);
+    pointer-events:none;
+  }
+  .chart-title {
+    font-family:var(--font-head); font-size:12px; letter-spacing:0.15em;
+    color:var(--neon-teal); text-transform:uppercase; margin-bottom:14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .chart-title .ct-icon { font-size:16px; }
+  .chart-live-indicator {
+    margin-left:auto;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--neon-green); box-shadow:0 0 8px var(--neon-green);
+    animation:pulse-dot 1.2s infinite;
+  }
+  .chart-wrap { height: 180px; position:relative; }
+
+  /* ===== GPS MAP ===== */
+  #map-section {
+    display: grid;
+    grid-template-columns: 1fr 260px;
+    gap: 20px;
+    margin-bottom: 36px;
+    align-items: stretch;
+  }
+  #map-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    position:relative;
+  }
+  #gps-canvas {
+    width: 100%; height: 340px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #010d0d;
+    display:block;
+  }
+  #gps-info {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:10px; margin-top:14px;
+  }
+  .gps-stat {
+    background: rgba(0,255,213,0.04); border:1px solid var(--border);
+    border-radius: 8px; padding:10px 12px;
+  }
+  .gps-stat-label { font-size:9px; font-family:var(--font-mono); color:var(--text-dim); letter-spacing:0.1em; text-transform:uppercase; }
+  .gps-stat-val { font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--neon-green); margin-top:2px; }
+
+  /* ===== NETWORK NODE PANEL ===== */
+  #network-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .node-card {
+    background: rgba(0,255,213,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding:14px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .node-card.offline { border-color: rgba(255,68,102,0.3); }
+  .node-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .node-dot { width:9px; height:9px; border-radius:50%; background:var(--neon-green); box-shadow:0 0 8px var(--neon-green); flex-shrink:0; }
+  .node-dot.offline { background:var(--neon-red); box-shadow:0 0 8px var(--neon-red); animation:none; }
+  .node-name { font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text-pri); }
+  .node-status { margin-left:auto; font-family:var(--font-mono); font-size:10px;
+    padding:2px 7px; border-radius:4px;
+    background:rgba(0,255,136,0.1); border:1px solid var(--neon-green); color:var(--neon-green);
+  }
+  .node-status.offline { background:rgba(255,68,102,0.1); border-color:var(--neon-red); color:var(--neon-red); }
+  .node-stats { display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:10px; font-family:var(--font-mono); color:var(--text-sec); }
+  .node-signal-bars { display:flex; align-items:flex-end; gap:2px; height:16px; }
+  .sig-bar { width:5px; border-radius:2px 2px 0 0; background:var(--text-dim); transition:background 0.4s; }
+  .sig-bar.active { background:var(--neon-green); box-shadow:0 0 4px var(--neon-green); }
+  .sig-bar.offline-bar { background: var(--text-dim) !important; box-shadow:none !important; }
+  .node-batt { display:flex; align-items:center; gap:6px; margin-top:6px; }
+  .batt-outer { width:36px; height:14px; border:1.5px solid var(--text-dim); border-radius:3px; position:relative; padding:1.5px; }
+  .batt-outer::after { content:''; position:absolute; right:-5px; top:3.5px; width:4px; height:7px; background:var(--text-dim); border-radius:0 2px 2px 0; }
+  .batt-inner { height:100%; border-radius:2px; background:var(--neon-green); transition:width 0.5s; }
+  .batt-inner.warn { background:var(--neon-amber); }
+  .batt-inner.crit { background:var(--neon-red); }
+
+  /* ===== BOTTOM GRID ===== */
+  #bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 36px;
+  }
+
+  /* ===== ALERT LOG ===== */
+  #alert-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display:flex; flex-direction:column;
+  }
+  #alert-list {
+    flex:1; overflow-y:auto; max-height:320px;
+    display:flex; flex-direction:column; gap:6px;
+    padding-right:4px;
+  }
+  .alert-item {
+    border-radius:8px; padding:10px 14px;
+    display:flex; align-items:flex-start; gap:10px;
+    border:1px solid transparent;
+    animation: slide-in 0.3s ease;
+    flex-shrink:0;
+  }
+  @keyframes slide-in { from{opacity:0; transform:translateX(-10px)} to{opacity:1; transform:translateX(0)} }
+  .alert-item.warn { background:rgba(255,170,0,0.06); border-color:rgba(255,170,0,0.2); }
+  .alert-item.crit { background:rgba(255,68,102,0.07); border-color:rgba(255,68,102,0.25); }
+  .alert-item.info { background:rgba(0,255,213,0.05); border-color:rgba(0,255,213,0.15); }
+  .alert-badge {
+    font-family:var(--font-mono); font-size:9px; font-weight:700; letter-spacing:0.12em;
+    padding:2px 7px; border-radius:4px; white-space:nowrap; flex-shrink:0; margin-top:1px;
+  }
+  .badge-warn { background:rgba(255,170,0,0.15); border:1px solid var(--neon-amber); color:var(--neon-amber); }
+  .badge-crit { background:rgba(255,68,102,0.15); border:1px solid var(--neon-red); color:var(--neon-red); }
+  .badge-info { background:rgba(0,255,213,0.1); border:1px solid var(--neon-teal); color:var(--neon-teal); }
+  .alert-body { flex:1; }
+  .alert-sensor { font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--text-pri); }
+  .alert-msg { font-size:11px; color:var(--text-sec); margin-top:2px; }
+  .alert-time { font-family:var(--font-mono); font-size:9px; color:var(--text-dim); margin-left:auto; white-space:nowrap; }
+  .no-alerts { text-align:center; color:var(--text-dim); font-family:var(--font-mono); font-size:12px; padding:40px 0; }
+
+  /* ===== STATS PANEL ===== */
+  #stats-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow-x:auto;
+  }
+  #stats-table {
+    width:100%; border-collapse:collapse;
+    font-family:var(--font-mono); font-size:11px;
+  }
+  #stats-table th {
+    color:var(--text-dim); font-weight:500; letter-spacing:0.1em;
+    padding:6px 10px; text-align:left; border-bottom:1px solid var(--border);
+    font-size:9px; text-transform:uppercase;
+  }
+  #stats-table td {
+    padding:8px 10px; color:var(--text-sec); border-bottom:1px solid rgba(0,255,213,0.05);
+    transition: color 0.3s;
+  }
+  #stats-table td:first-child { color:var(--text-pri); font-weight:600; }
+  #stats-table td.hi { color:var(--neon-teal); }
+  #stats-table tr:hover td { background:rgba(0,255,213,0.03); }
+  .sparkbar-cell canvas { display:block; }
+
+  /* ===== CONTROL PANEL ===== */
+  #controls-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    margin-bottom: 36px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+    gap: 24px;
+  }
+  .ctrl-group { display:flex; flex-direction:column; gap:12px; }
+  .ctrl-group-title {
+    font-family:var(--font-mono); font-size:10px; letter-spacing:0.15em;
+    color:var(--neon-green); text-transform:uppercase; margin-bottom:4px;
+    padding-bottom:6px; border-bottom:1px solid var(--border2);
+  }
+  .ctrl-row { display:flex; align-items:center; gap:10px; }
+  .ctrl-label { font-size:11px; color:var(--text-sec); min-width:120px; font-family:var(--font-mono); }
+  .ctrl-select {
+    background:rgba(0,255,213,0.06); border:1px solid var(--border);
+    border-radius:6px; color:var(--neon-teal); font-family:var(--font-mono); font-size:11px;
+    padding:5px 10px; outline:none; cursor:pointer;
+    -webkit-appearance:none;
+  }
+  .ctrl-select:focus { border-color:var(--neon-teal); box-shadow:0 0 8px rgba(0,255,213,0.2); }
+
+  .btn {
+    font-family:var(--font-head); font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+    padding:8px 18px; border-radius:8px; border:1px solid var(--neon-teal);
+    background:rgba(0,255,213,0.08); color:var(--neon-teal);
+    cursor:pointer; transition:all 0.2s; outline:none;
+  }
+  .btn:hover { background:rgba(0,255,213,0.18); box-shadow:var(--shadow-teal); transform:translateY(-1px); }
+  .btn:active { transform:translateY(0); }
+  .btn.paused { border-color:var(--neon-amber); background:rgba(255,170,0,0.1); color:var(--neon-amber); }
+  .btn.danger { border-color:var(--neon-red); background:rgba(255,68,102,0.08); color:var(--neon-red); }
+  .btn.export { border-color:var(--neon-green); background:rgba(0,255,136,0.08); color:var(--neon-green); }
+
+  /* range sliders */
+  input[type=range] {
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:4px; background:rgba(0,255,213,0.15);
+    border-radius:2px; outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px; height:14px;
+    border-radius:50%; background:var(--neon-teal);
+    box-shadow:0 0 8px var(--neon-teal); cursor:pointer;
+    transition:transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.3); }
+  .slider-row { display:flex; flex-direction:column; gap:4px; }
+  .slider-label-row { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:10px; color:var(--text-sec); }
+  .slider-val { color:var(--neon-teal); }
+
+  /* checkboxes */
+  .check-row { display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .check-row input[type=checkbox] { accent-color:var(--neon-teal); width:14px; height:14px; cursor:pointer; }
+  .check-row label { font-family:var(--font-mono); font-size:11px; color:var(--text-sec); cursor:pointer; }
+
+  /* ===== FOOTER ===== */
+  #footer {
+    text-align:center; padding: 20px 0;
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+    border-top:1px solid var(--border);
+    letter-spacing:0.08em;
+  }
+  #footer span { color:var(--neon-teal); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width:900px) {
+    #map-section { grid-template-columns:1fr; }
+    #bottom-grid { grid-template-columns:1fr; }
+    #charts-section { grid-template-columns:1fr; }
+  }
+  @media (max-width:600px) {
+    #sensor-cards { grid-template-columns:1fr 1fr; }
+    #controls-section { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Network Background -->
+<canvas id="network-bg"></canvas>
+
+<!-- Status Bar -->
+<div id="status-bar">
+  <div class="sb-item">
+    <div class="sb-dot" id="sb-online-dot"></div>
+    <span>NODES ONLINE:</span>
+    <span class="sb-val" id="sb-nodes">4/4</span>
+  </div>
+  <div class="sb-item">
+    <span>DATA POINTS:</span>
+    <span class="sb-val" id="sb-datapts">0</span>
+  </div>
+  <div class="sb-item">
+    <span>UPTIME:</span>
+    <span class="sb-val" id="sb-uptime">00:00:00</span>
+  </div>
+  <div class="sb-item">
+    <span>UPDATE RATE:</span>
+    <span class="sb-val" id="sb-rate">500ms</span>
+  </div>
+  <div class="sb-item">
+    <span>STATUS:</span>
+    <span class="sb-val" id="sb-status" style="color:var(--neon-green)">● LIVE</span>
+  </div>
+  <div id="sb-time">--:--:--</div>
+</div>
+
+<div id="app">
+  <!-- Header -->
+  <div id="header">
+    <div class="header-left">
+      <h1>⚡ IoT Sensor Dashboard</h1>
+      <div class="header-sub">PROJECT 8.7 · HARIS HUSSAIN · SPACE SCIENCE · UNIVERSITY OF PUNJAB</div>
+    </div>
+    <div class="header-badge">INDUSTRIAL IoT CONSOLE v2.7</div>
+  </div>
+
+  <!-- Sensor Cards -->
+  <div class="sec-label">📡 LIVE SENSOR READINGS</div>
+  <div id="sensor-cards">
+    <!-- Cards injected by JS -->
+  </div>
+
+  <!-- Control Panel -->
+  <div class="sec-label">⚙️ CONTROL PANEL</div>
+  <div id="controls-section">
+    <!-- Simulation Controls -->
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Simulation</div>
+      <div class="ctrl-row">
+        <button class="btn" id="btn-pause" onclick="togglePause()">⏸ PAUSE</button>
+        <button class="btn danger" onclick="clearHistory()">🗑 CLEAR</button>
+        <button class="btn export" onclick="exportCSV()">📥 EXPORT CSV</button>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Update Rate</span>
+        <select class="ctrl-select" id="rate-select" onchange="changeRate(this.value)">
+          <option value="500">500ms</option>
+          <option value="1000">1s</option>
+          <option value="2000">2s</option>
+          <option value="5000">5s</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Sensor Visibility -->
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Sensor Visibility</div>
+      <div class="check-row"><input type="checkbox" id="cb-temp" checked onchange="toggleSensor('temp',this.checked)"><label for="cb-temp">🌡️ Temperature</label></div>
+      <div class="check-row"><input type="checkbox" id="cb-humi" checked onchange="toggleSensor('humi',this.checked)"><label for="cb-humi">💧 Humidity</label></div>
+      <div class="check-row"><input type="checkbox" id="cb-pres" checked onchange="toggleSensor('pres',this.checked)"><label for="cb-pres">🌀 Air Pressure</label></div>
+      <div class="check-row"><input type="checkbox" id="cb-aqi" checked onchange="toggleSensor('aqi',this.checked)"><label for="cb-aqi">🌫️ Air Quality</label></div>
+      <div class="check-row"><input type="checkbox" id="cb-uv" checked onchange="toggleSensor('uv',this.checked)"><label for="cb-uv">☀️ UV Index</label></div>
+      <div class="check-row"><input type="checkbox" id="cb-batt" checked onchange="toggleSensor('batt',this.checked)"><label for="cb-batt">🔋 Battery</label></div>
+    </div>
+
+    <!-- Temperature Thresholds -->
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Temp Thresholds (°C)</div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>Warning High</span><span class="slider-val" id="sl-twh-val">33°C</span></div>
+        <input type="range" id="sl-twh" min="25" max="45" value="33" step="0.5" oninput="updateThreshold('temp','warnHigh',this.value,'sl-twh-val','°C')">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>Critical High</span><span class="slider-val" id="sl-tch-val">38°C</span></div>
+        <input type="range" id="sl-tch" min="30" max="50" value="38" step="0.5" oninput="updateThreshold('temp','critHigh',this.value,'sl-tch-val','°C')">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>Warning Low</span><span class="slider-val" id="sl-twl-val">15°C</span></div>
+        <input type="range" id="sl-twl" min="5" max="25" value="15" step="0.5" oninput="updateThreshold('temp','warnLow',this.value,'sl-twl-val','°C')">
+      </div>
+    </div>
+
+    <!-- Humidity/AQI Thresholds -->
+    <div class="ctrl-group">
+      <div class="ctrl-group-title">Humidity & AQI Thresholds</div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>Humidity Warn High</span><span class="slider-val" id="sl-hwh-val">80%</span></div>
+        <input type="range" id="sl-hwh" min="60" max="95" value="80" step="1" oninput="updateThreshold('humi','warnHigh',this.value,'sl-hwh-val','%')">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>Humidity Warn Low</span><span class="slider-val" id="sl-hwl-val">30%</span></div>
+        <input type="range" id="sl-hwl" min="10" max="50" value="30" step="1" oninput="updateThreshold('humi','warnLow',this.value,'sl-hwl-val','%')">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label-row"><span>AQI Warning Level</span><span class="slider-val" id="sl-awh-val">100</span></div>
+        <input type="range" id="sl-awh" min="50" max="200" value="100" step="5" oninput="updateThreshold('aqi','warnHigh',this.value,'sl-awh-val','')">
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="sec-label">📈 REAL-TIME TIME SERIES</div>
+  <div id="charts-section">
+    <div class="chart-card" id="chart-temp-wrap">
+      <div class="chart-title"><span class="ct-icon">🌡️</span> TEMPERATURE <div class="chart-live-indicator"></div></div>
+      <div class="chart-wrap"><canvas id="chart-temp"></canvas></div>
+    </div>
+    <div class="chart-card" id="chart-humi-wrap">
+      <div class="chart-title"><span class="ct-icon">💧</span> HUMIDITY <div class="chart-live-indicator"></div></div>
+      <div class="chart-wrap"><canvas id="chart-humi"></canvas></div>
+    </div>
+    <div class="chart-card" id="chart-pres-wrap">
+      <div class="chart-title"><span class="ct-icon">🌀</span> AIR PRESSURE <div class="chart-live-indicator"></div></div>
+      <div class="chart-wrap"><canvas id="chart-pres"></canvas></div>
+    </div>
+    <div class="chart-card" id="chart-aqi-wrap">
+      <div class="chart-title"><span class="ct-icon">🌫️</span> AIR QUALITY INDEX <div class="chart-live-indicator"></div></div>
+      <div class="chart-wrap"><canvas id="chart-aqi"></canvas></div>
+    </div>
+    <div class="chart-card" id="chart-uv-wrap">
+      <div class="chart-title"><span class="ct-icon">☀️</span> UV INDEX <div class="chart-live-indicator"></div></div>
+      <div class="chart-wrap"><canvas id="chart-uv"></canvas></div>
+    </div>
+  </div>
+
+  <!-- GPS Map + Network Panel -->
+  <div class="sec-label">🗺️ GPS TRACK & NETWORK STATUS</div>
+  <div id="map-section">
+    <div id="map-card">
+      <div class="chart-title"><span class="ct-icon">📍</span> GPS LIVE TRACK <div class="chart-live-indicator"></div></div>
+      <canvas id="gps-canvas"></canvas>
+      <div id="gps-info">
+        <div class="gps-stat"><div class="gps-stat-label">Latitude</div><div class="gps-stat-val" id="gps-lat">31.5204°N</div></div>
+        <div class="gps-stat"><div class="gps-stat-label">Longitude</div><div class="gps-stat-val" id="gps-lon">74.3587°E</div></div>
+        <div class="gps-stat"><div class="gps-stat-label">Speed</div><div class="gps-stat-val" id="gps-speed">0.0 km/h</div></div>
+        <div class="gps-stat"><div class="gps-stat-label">Heading</div><div class="gps-stat-val" id="gps-heading">---°</div></div>
+        <div class="gps-stat"><div class="gps-stat-label">Altitude</div><div class="gps-stat-val" id="gps-alt">217 m</div></div>
+        <div class="gps-stat"><div class="gps-stat-label">Fix Quality</div><div class="gps-stat-val" id="gps-fix" style="color:var(--neon-green)">GPS 3D</div></div>
+      </div>
+    </div>
+
+    <div id="network-panel">
+      <div class="chart-title" style="font-size:11px">📶 SENSOR NODES</div>
+      <div id="node-list">
+        <!-- Nodes injected by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: Alert Log + Stats -->
+  <div class="sec-label">⚠️ ALERTS & STATISTICS</div>
+  <div id="bottom-grid">
+    <div id="alert-panel">
+      <div class="chart-title" style="margin-bottom:12px"><span class="ct-icon">🚨</span> ANOMALY LOG <div class="chart-live-indicator"></div></div>
+      <div id="alert-list">
+        <div class="no-alerts">No anomalies detected. System nominal.</div>
+      </div>
+    </div>
+
+    <div id="stats-panel">
+      <div class="chart-title" style="margin-bottom:12px"><span class="ct-icon">📊</span> STATISTICS SUMMARY</div>
+      <table id="stats-table">
+        <thead>
+          <tr>
+            <th>SENSOR</th><th>MIN</th><th>MAX</th><th>MEAN</th><th>STD DEV</th>
+          </tr>
+        </thead>
+        <tbody id="stats-tbody">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <span>IoT SENSOR DATA DASHBOARD</span> · PROJECT 8.7 · HARIS HUSSAIN · SPACE SCIENCE · UNIVERSITY OF PUNJAB ·
+    BUILT WITH <span>Chart.js + Canvas API + Vanilla JS</span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   NETWORK BACKGROUND ANIMATION
+   ============================================================ */
+(function() {
+  const canvas = document.getElementById('network-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes = [];
+  const NODE_COUNT = 55, MAX_DIST = 160;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  // create nodes
+  for (let i = 0; i < NODE_COUNT; i++) {
+    nodes.push({
+      x: rand(0, W), y: rand(0, H),
+      vx: rand(-0.35, 0.35), vy: rand(-0.35, 0.35),
+      r: rand(1.5, 3)
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // move
+    nodes.forEach(n => {
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+    });
+    // draw lines
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i+1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < MAX_DIST) {
+          const alpha = (1 - dist / MAX_DIST) * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(0,255,213,${alpha})`;
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
+    }
+    // draw dots
+    nodes.forEach(n => {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(0,255,213,0.7)';
+      ctx.shadowBlur = 6; ctx.shadowColor = '#00ffd5';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ============================================================
+   GAUSSIAN RANDOM (Box-Muller)
+   ============================================================ */
+function randomNormal(mu=0, sigma=1) {
+  let u = 0, v = 0;
+  while (!u) u = Math.random();
+  while (!v) v = Math.random();
+  return mu + sigma * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+/* ============================================================
+   SENSOR CONFIG
+   ============================================================ */
+const SENSOR_CONFIG = {
+  temp: {
+    name: 'Temperature', unit: '°C', icon: '🌡️', key:'temp',
+    thresholds: { warnHigh:33, warnLow:15, critHigh:38, critLow:10 },
+    color: '#00ffd5', chartId:'chart-temp',
+    simulate: (t) => 25 + 5*Math.sin(t/50) + randomNormal(0,0.3),
+    fmt: v => v.toFixed(1)
+  },
+  humi: {
+    name: 'Humidity', unit: '%', icon: '💧', key:'humi',
+    thresholds: { warnHigh:80, warnLow:30, critHigh:95, critLow:15 },
+    color: '#00aaff', chartId:'chart-humi',
+    simulate: (t) => 60 + 10*Math.cos(t/70) + randomNormal(0,1.0),
+    fmt: v => v.toFixed(1)
+  },
+  pres: {
+    name: 'Air Pressure', unit: 'hPa', icon: '🌀', key:'pres',
+    thresholds: { warnHigh:1025, warnLow:1005, critHigh:1030, critLow:1000 },
+    color: '#00ff88', chartId:'chart-pres',
+    simulate: (t) => 1013 + 2*Math.sin(t/100) + randomNormal(0,0.5),
+    fmt: v => v.toFixed(1)
+  },
+  aqi: {
+    name: 'Air Quality', unit: 'AQI', icon: '🌫️', key:'aqi',
+    thresholds: { warnHigh:100, warnLow:0, critHigh:150, critLow:0 },
+    color: '#ffaa00', chartId:'chart-aqi',
+    simulate: (t) => 45 + 20*Math.sin(t/80) + randomNormal(0,3),
+    fmt: v => Math.round(v)
+  },
+  uv: {
+    name: 'UV Index', unit: 'UV', icon: '☀️', key:'uv',
+    thresholds: { warnHigh:6, warnLow:0, critHigh:8, critLow:0 },
+    color: '#ff88aa', chartId:'chart-uv',
+    simulate: (t) => Math.max(0, 5 + 3*Math.sin(t/60) + randomNormal(0,0.5)),
+    fmt: v => v.toFixed(2)
+  },
+  batt: {
+    name: 'Battery', unit: '%', icon: '🔋', key:'batt',
+    thresholds: { warnHigh:101, warnLow:30, critHigh:101, critLow:15 },
+    color: '#88ff44', chartId:null,
+    simulate: null, // special
+    fmt: v => v.toFixed(1)
+  }
+};
+
+const SENSOR_KEYS = ['temp','humi','pres','aqi','uv','batt'];
+const MAX_HISTORY = 60;
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let history = {};       // key -> []
+let paused = false;
+let tick = 0;
+let updateInterval = 500;
+let intervalHandle = null;
+let startTime = Date.now();
+let totalDataPts = 0;
+let battLevel = 95;     // simulated battery
+let sensorVisible = {};
+let alerts = [];
+let charts = {};
+let statUpdateCounter = 0;
+let prevValues = {};
+
+// GPS State
+let gpsLat  = 31.5204, gpsLon = 74.3587, gpsAlt = 217;
+let gpsHeading = 45, gpsSpeed = 0;
+let gpsTrack = [];
+const GPS_MAX = 200;
+
+// Node state
+const NODES = [
+  { id:'Node-1', lat:31.521,  lon:74.358, batt:88 },
+  { id:'Node-2', lat:31.519,  lon:74.362, batt:62 },
+  { id:'Node-3', lat:31.522,  lon:74.354, batt:45 },
+  { id:'Node-4', lat:31.518,  lon:74.360, batt:31 },
+];
+let nodeOnline = [true,true,true,true];
+let nodeLastSeen = [0,0,0,0];
+let nodeSignal = [4,3,4,2];
+
+// init history
+SENSOR_KEYS.forEach(k => { history[k] = []; sensorVisible[k] = true; prevValues[k] = null; });
+
+/* ============================================================
+   BUILD SENSOR CARDS
+   ============================================================ */
+function buildCards() {
+  const grid = document.getElementById('sensor-cards');
+  grid.innerHTML = '';
+  SENSOR_KEYS.forEach(key => {
+    const s = SENSOR_CONFIG[key];
+    const card = document.createElement('div');
+    card.className = 's-card';
+    card.id = `card-${key}`;
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-icon">${s.icon}</span>
+        <span class="card-status-badge" id="badge-${key}">NORMAL</span>
+      </div>
+      <div class="card-name">${s.name}</div>
+      <div class="card-value-row">
+        <span class="card-value" id="val-${key}">---</span>
+        <span class="card-unit">${s.unit}</span>
+        <span class="card-trend" id="trend-${key}">⟶</span>
+      </div>
+      <canvas class="card-sparkline" id="spark-${key}" height="40"></canvas>
+      <div class="card-range">
+        <span id="rmin-${key}">min: --</span>
+        <span id="rmax-${key}">max: --</span>
+      </div>
+    `;
+    grid.appendChild(card);
+    if (!sensorVisible[key]) card.style.opacity = '0.4';
+  });
+}
+
+/* ============================================================
+   SPARKLINE DRAWING
+   ============================================================ */
+function drawSparkline(key, color) {
+  const canvas = document.getElementById(`spark-${key}`);
+  if (!canvas) return;
+  const data = history[key];
+  if (data.length < 2) return;
+  const w = canvas.clientWidth || canvas.offsetWidth || 200;
+  const h = 40;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  const vals = data.map(d => d.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = max - min || 1;
+
+  const points = vals.map((v,i) => ({
+    x: i / (vals.length-1) * w,
+    y: h - ((v - min) / range) * (h - 4) - 2
+  }));
+
+  // gradient fill
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, color + '55');
+  grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, h);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length-1].x, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  points.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 4; ctx.shadowColor = color;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+/* ============================================================
+   STATUS FROM VALUE
+   ============================================================ */
+function getStatus(key, v) {
+  const t = SENSOR_CONFIG[key].thresholds;
+  if (v >= t.critHigh || v <= t.critLow) return 'crit';
+  if (v >= t.warnHigh || v <= t.warnLow) return 'warn';
+  return 'ok';
+}
+
+function getStatusLabel(st) {
+  return st === 'crit' ? 'CRITICAL' : st === 'warn' ? 'WARNING' : 'NORMAL';
+}
+
+/* ============================================================
+   UPDATE CARDS
+   ============================================================ */
+function updateCards() {
+  SENSOR_KEYS.forEach(key => {
+    const s = SENSOR_CONFIG[key];
+    const data = history[key];
+    if (data.length === 0) return;
+    const cur = data[data.length-1].v;
+    const prev = data.length > 1 ? data[data.length-2].v : cur;
+    const st = getStatus(key, cur);
+    const card = document.getElementById(`card-${key}`);
+    const valEl = document.getElementById(`val-${key}`);
+    const badgeEl = document.getElementById(`badge-${key}`);
+    const trendEl = document.getElementById(`trend-${key}`);
+
+    // value
+    valEl.textContent = s.fmt(cur);
+    valEl.className = `card-value ${st === 'warn' ? 'warn' : st === 'crit' ? 'crit' : ''}`;
+
+    // badge
+    badgeEl.textContent = getStatusLabel(st);
+    badgeEl.className = `card-status-badge ${st === 'warn' ? 'warn' : st === 'crit' ? 'crit' : ''}`;
+
+    // card class
+    card.className = `s-card ${st === 'warn' ? 'warn' : st === 'crit' ? 'crit' : ''}`;
+
+    // flash animation
+    const diff = Math.abs(cur - prev);
+    const threshold = st !== 'ok' ? 0.01 : (key === 'pres' ? 1 : 0.5);
+    if (diff > threshold) {
+      card.classList.add('value-flash');
+      setTimeout(() => card.classList.remove('value-flash'), 300);
+    }
+
+    // trend
+    const delta = cur - prev;
+    if (Math.abs(delta) < 0.05) {
+      trendEl.textContent = '⟶';
+      trendEl.className = 'card-trend trend-stable';
+    } else if (delta > 0) {
+      trendEl.textContent = '↑';
+      trendEl.className = 'card-trend trend-up';
+    } else {
+      trendEl.textContent = '↓';
+      trendEl.className = 'card-trend trend-down';
+    }
+
+    // range
+    const vals = data.map(d => d.v);
+    document.getElementById(`rmin-${key}`).textContent = `min: ${s.fmt(Math.min(...vals))}`;
+    document.getElementById(`rmax-${key}`).textContent = `max: ${s.fmt(Math.max(...vals))}`;
+
+    // sparkline
+    drawSparkline(key, s.color);
+  });
+}
+
+/* ============================================================
+   CHART.JS CHARTS
+   ============================================================ */
+function buildColor(hex, alpha) { return hex + Math.round(alpha*255).toString(16).padStart(2,'0'); }
+
+function createChart(id, label, color, unit) {
+  const el = document.getElementById(id);
+  if (!el) return null;
+  const ctx2 = el.getContext('2d');
+
+  const gradient = ctx2.createLinearGradient(0,0,0,180);
+  gradient.addColorStop(0, color + '66');
+  gradient.addColorStop(1, color + '00');
+
+  const ch = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label,
+        data: [],
+        borderColor: color,
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHoverBackgroundColor: color,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor:'rgba(3,25,25,0.9)',
+          borderColor: color, borderWidth:1,
+          titleFont: { family:'JetBrains Mono', size:10 },
+          bodyFont: { family:'JetBrains Mono', size:11 },
+          callbacks: { label: ctx => `${ctx.parsed.y.toFixed(2)} ${unit}` }
+        }
+      },
+      scales: {
+        x: {
+          display:true,
+          grid: { color:'rgba(0,255,213,0.05)', lineWidth:1 },
+          ticks: { color:'#3a7070', font:{ family:'JetBrains Mono', size:8 }, maxTicksLimit:6 }
+        },
+        y: {
+          display:true,
+          grid: { color:'rgba(0,255,213,0.07)', lineWidth:1 },
+          ticks: { color:'#3a7070', font:{ family:'JetBrains Mono', size:9 }, maxTicksLimit:5 }
+        }
+      }
+    }
+  });
+  return ch;
+}
+
+function initCharts() {
+  charts.temp = createChart('chart-temp','Temperature','#00ffd5','°C');
+  charts.humi = createChart('chart-humi','Humidity','#00aaff','%');
+  charts.pres = createChart('chart-pres','Air Pressure','#00ff88','hPa');
+  charts.aqi  = createChart('chart-aqi','AQI','#ffaa00','AQI');
+  charts.uv   = createChart('chart-uv','UV Index','#ff88aa','UV');
+}
+
+function updateCharts() {
+  const chartKeys = ['temp','humi','pres','aqi','uv'];
+  chartKeys.forEach(key => {
+    if (!charts[key] || !sensorVisible[key]) return;
+    const data = history[key];
+    if (data.length === 0) return;
+    const last = data[data.length-1];
+    const ch = charts[key];
+    ch.data.labels.push(last.ts);
+    ch.data.datasets[0].data.push(last.v);
+    if (ch.data.labels.length > MAX_HISTORY) {
+      ch.data.labels.shift();
+      ch.data.datasets[0].data.shift();
+    }
+    ch.update('none');
+  });
+}
+
+/* ============================================================
+   ANOMALY DETECTION & ALERT LOG
+   ============================================================ */
+function checkAnomalies(key, v, ts) {
+  const st = getStatus(key, v);
+  if (st === 'ok') return;
+  const s = SENSOR_CONFIG[key];
+  const t = s.thresholds;
+  let msg = '';
+  if (v >= t.critHigh) msg = `${s.fmt(v)}${s.unit} exceeds CRITICAL HIGH (${t.critHigh}${s.unit})`;
+  else if (v <= t.critLow && t.critLow > 0) msg = `${s.fmt(v)}${s.unit} below CRITICAL LOW (${t.critLow}${s.unit})`;
+  else if (v >= t.warnHigh) msg = `${s.fmt(v)}${s.unit} exceeds WARNING HIGH (${t.warnHigh}${s.unit})`;
+  else if (v <= t.warnLow && t.warnLow > 0) msg = `${s.fmt(v)}${s.unit} below WARNING LOW (${t.warnLow}${s.unit})`;
+
+  if (!msg) return;
+
+  // Throttle: don't spam same sensor with same severity in < 5s
+  const lastAlert = alerts.find(a => a.key === key && a.st === st);
+  if (lastAlert && (Date.now() - lastAlert.rawTime < 5000)) return;
+
+  addAlert(key, s.name, msg, st, ts);
+}
+
+function addAlert(key, sensorName, msg, st, ts) {
+  const alert = { key, sensorName, msg, st, ts, rawTime: Date.now() };
+  alerts.unshift(alert);
+  if (alerts.length > 200) alerts.pop();
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  if (alerts.length === 0) {
+    list.innerHTML = '<div class="no-alerts">No anomalies detected. System nominal.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  alerts.slice(0,40).forEach(a => {
+    const div = document.createElement('div');
+    div.className = `alert-item ${a.st}`;
+    div.innerHTML = `
+      <span class="alert-badge badge-${a.st}">${a.st === 'crit' ? 'CRITICAL' : 'WARNING'}</span>
+      <div class="alert-body">
+        <div class="alert-sensor">${a.sensorName}</div>
+        <div class="alert-msg">${a.msg}</div>
+      </div>
+      <span class="alert-time">${a.ts}</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+/* ============================================================
+   STATISTICS
+   ============================================================ */
+function computeStats() {
+  const tbody = document.getElementById('stats-tbody');
+  tbody.innerHTML = '';
+  SENSOR_KEYS.forEach(key => {
+    const s = SENSOR_CONFIG[key];
+    const vals = history[key].map(d => d.v);
+    if (vals.length === 0) return;
+    const n = vals.length;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const mean = vals.reduce((a,b)=>a+b,0)/n;
+    const std = Math.sqrt(vals.map(v=>(v-mean)**2).reduce((a,b)=>a+b,0)/n);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.icon} ${s.name}</td>
+      <td>${s.fmt(min)}</td>
+      <td class="hi">${s.fmt(max)}</td>
+      <td>${s.fmt(mean)}</td>
+      <td>${std.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   GPS SIMULATION
+   ============================================================ */
+function simGPS() {
+  const dLat = randomNormal(0, 0.0002);
+  const dLon = randomNormal(0, 0.0002);
+  // clamp to bounding box
+  gpsLat = Math.max(31.515, Math.min(31.525, gpsLat + dLat));
+  gpsLon = Math.max(74.350, Math.min(74.370, gpsLon + dLon));
+  gpsAlt = Math.max(210, Math.min(230, gpsAlt + randomNormal(0, 0.3)));
+  gpsSpeed = Math.abs(dLat * 111000 + dLon * 95000) * 3600 * 1000;
+  gpsHeading = Math.atan2(dLon, dLat) * 180/Math.PI;
+  if (gpsHeading < 0) gpsHeading += 360;
+
+  gpsTrack.push({lat: gpsLat, lon: gpsLon});
+  if (gpsTrack.length > GPS_MAX) gpsTrack.shift();
+
+  document.getElementById('gps-lat').textContent = gpsLat.toFixed(5) + '°N';
+  document.getElementById('gps-lon').textContent = gpsLon.toFixed(5) + '°E';
+  document.getElementById('gps-speed').textContent = gpsSpeed.toFixed(2) + ' km/h';
+  document.getElementById('gps-heading').textContent = Math.round(gpsHeading) + '°';
+  document.getElementById('gps-alt').textContent = gpsAlt.toFixed(1) + ' m';
+  drawGPSMap();
+}
+
+function latLonToCanvas(lat, lon, w, h) {
+  const minLat=31.514, maxLat=31.526, minLon=74.349, maxLon=74.371;
+  const x = (lon - minLon) / (maxLon - minLon) * (w - 40) + 20;
+  const y = (1 - (lat - minLat) / (maxLat - minLat)) * (h - 40) + 20;
+  return {x,y};
+}
+
+let gpsPulse = 0;
+function drawGPSMap() {
+  const canvas = document.getElementById('gps-canvas');
+  const w = canvas.width = canvas.offsetWidth;
+  const h = canvas.height = canvas.offsetHeight || 340;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  // background
+  ctx.fillStyle = '#010d0d';
+  ctx.fillRect(0,0,w,h);
+
+  // grid lines
+  ctx.strokeStyle = 'rgba(0,255,213,0.08)';
+  ctx.lineWidth = 0.8;
+  const gridX = 10, gridY = 8;
+  for (let i = 0; i <= gridX; i++) {
+    const x = 20 + (w-40)*i/gridX;
+    ctx.beginPath(); ctx.moveTo(x,20); ctx.lineTo(x,h-20); ctx.stroke();
+  }
+  for (let i = 0; i <= gridY; i++) {
+    const y = 20 + (h-40)*i/gridY;
+    ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(w-20,y); ctx.stroke();
+  }
+
+  // lat/lon labels
+  ctx.font = '8px JetBrains Mono';
+  ctx.fillStyle = '#1a4a4a';
+  for (let i=0; i<=5; i++) {
+    const lat = (31.514 + i*(31.526-31.514)/5).toFixed(3);
+    const lon = (74.349 + i*(74.371-74.349)/5).toFixed(3);
+    const y = 20 + (h-40)*i/5;
+    const x = 20 + (w-40)*i/5;
+    ctx.fillText(lat+'N', 2, y+3);
+    ctx.fillText(lon+'E', x-16, h-4);
+  }
+
+  // bounding box
+  ctx.strokeStyle = 'rgba(0,255,213,0.15)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(20,20,w-40,h-40);
+
+  // draw nodes
+  NODES.forEach((n,i) => {
+    const pt = latLonToCanvas(n.lat, n.lon, w, h);
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 5, 0, Math.PI*2);
+    const clr = nodeOnline[i] ? '#00ff88' : '#ff4466';
+    ctx.fillStyle = clr + '88';
+    ctx.fill();
+    ctx.strokeStyle = clr;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = clr;
+    ctx.font = '9px JetBrains Mono';
+    ctx.fillText(n.id, pt.x+7, pt.y+4);
+  });
+
+  // draw GPS track
+  if (gpsTrack.length > 1) {
+    ctx.beginPath();
+    gpsTrack.forEach((pt,i) => {
+      const p = latLonToCanvas(pt.lat, pt.lon, w, h);
+      i===0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.strokeStyle = '#00ffd5';
+    ctx.lineWidth = 1.8;
+    ctx.shadowBlur = 6; ctx.shadowColor = '#00ffd5';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // current position pulsing dot
+  if (gpsTrack.length > 0) {
+    const last = gpsTrack[gpsTrack.length-1];
+    const p = latLonToCanvas(last.lat, last.lon, w, h);
+    gpsPulse = (gpsPulse + 0.12) % (Math.PI*2);
+    const scale = 1 + 0.4 * Math.sin(gpsPulse);
+
+    // outer pulse ring
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10 * scale, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,255,213,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // inner dot
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#00ffd5';
+    ctx.shadowBlur = 12; ctx.shadowColor = '#00ffd5';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // crosshair
+    ctx.strokeStyle = 'rgba(0,255,213,0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(p.x-12, p.y); ctx.lineTo(p.x+12, p.y);
+    ctx.moveTo(p.x, p.y-12); ctx.lineTo(p.x, p.y+12);
+    ctx.stroke();
+  }
+}
+
+/* ============================================================
+   NETWORK NODES
+   ============================================================ */
+function buildNodePanel() {
+  const list = document.getElementById('node-list');
+  list.innerHTML = '';
+  NODES.forEach((n,i) => {
+    const div = document.createElement('div');
+    div.className = 'node-card';
+    div.id = `node-${i}`;
+    div.innerHTML = `
+      <div class="node-head">
+        <div class="node-dot" id="ndot-${i}"></div>
+        <span class="node-name">${n.id}</span>
+        <span class="node-status" id="nstatus-${i}">ONLINE</span>
+      </div>
+      <div class="node-stats">
+        <span>SIGNAL</span>
+        <div class="node-signal-bars" id="nsig-${i}">
+          ${[1,2,3,4].map((b,j) => `<div class="sig-bar" id="sbar-${i}-${j}" style="height:${(j+1)*4}px"></div>`).join('')}
+        </div>
+        <span>LAST SEEN</span>
+        <span id="nlast-${i}" style="color:var(--neon-teal)">just now</span>
+      </div>
+      <div class="node-batt">
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim)">BATT</span>
+        <div class="batt-outer">
+          <div class="batt-inner" id="nbatt-${i}" style="width:${n.batt}%"></div>
+        </div>
+        <span id="nbattval-${i}" style="font-family:var(--font-mono);font-size:10px;color:var(--neon-green)">${n.batt}%</span>
+      </div>
+    `;
+    list.appendChild(div);
+    updateNodeVisuals(i);
+  });
+}
+
+function updateNodeVisuals(i) {
+  const online = nodeOnline[i];
+  const card   = document.getElementById(`node-${i}`);
+  const dot    = document.getElementById(`ndot-${i}`);
+  const status = document.getElementById(`nstatus-${i}`);
+  const sig    = nodeSignal[i];
+  const batt   = NODES[i].batt;
+  const lastEl = document.getElementById(`nlast-${i}`);
+
+  card.className = `node-card ${online ? '' : 'offline'}`;
+  dot.className  = `node-dot ${online ? '' : 'offline'}`;
+  status.textContent = online ? 'ONLINE' : 'OFFLINE';
+  status.className   = `node-status ${online ? '' : 'offline'}`;
+
+  for (let j = 0; j < 4; j++) {
+    const bar = document.getElementById(`sbar-${i}-${j}`);
+    bar.className = `sig-bar ${!online ? 'offline-bar' : j < sig ? 'active' : ''}`;
+  }
+
+  const secs = Math.round((Date.now() - nodeLastSeen[i])/1000);
+  lastEl.textContent = online ? 'just now' : `${secs}s ago`;
+
+  const battEl = document.getElementById(`nbatt-${i}`);
+  battEl.style.width = batt + '%';
+  battEl.className = `batt-inner ${batt < 20 ? 'crit' : batt < 40 ? 'warn' : ''}`;
+  document.getElementById(`nbattval-${i}`).textContent = batt + '%';
+}
+
+function simNodes() {
+  NODES.forEach((n,i) => {
+    // random brief disconnection (1% chance)
+    if (Math.random() < 0.01 && nodeOnline[i]) {
+      nodeOnline[i] = false;
+      nodeLastSeen[i] = Date.now();
+      setTimeout(() => {
+        nodeOnline[i] = true;
+        nodeLastSeen[i] = 0;
+        updateNodeVisuals(i);
+        updateStatusBar();
+      }, 2000 + Math.random() * 3000);
+    }
+    // battery slowly drains
+    n.batt = Math.max(5, n.batt - 0.005);
+    // signal fluctuation
+    if (Math.random() < 0.05) {
+      nodeSignal[i] = Math.max(1, Math.min(4, nodeSignal[i] + (Math.random() < 0.5 ? 1 : -1)));
+    }
+    updateNodeVisuals(i);
+  });
+
+  updateStatusBar();
+}
+
+/* ============================================================
+   STATUS BAR
+   ============================================================ */
+function updateStatusBar() {
+  const onlineCount = nodeOnline.filter(Boolean).length;
+  document.getElementById('sb-nodes').textContent = `${onlineCount}/4`;
+  document.getElementById('sb-datapts').textContent = totalDataPts.toLocaleString();
+
+  const dot = document.getElementById('sb-online-dot');
+  dot.className = `sb-dot ${onlineCount < 4 ? 'warn' : ''}`;
+
+  const upSecs = Math.floor((Date.now() - startTime) / 1000);
+  const hh = Math.floor(upSecs/3600).toString().padStart(2,'0');
+  const mm = Math.floor((upSecs%3600)/60).toString().padStart(2,'0');
+  const ss = (upSecs%60).toString().padStart(2,'0');
+  document.getElementById('sb-uptime').textContent = `${hh}:${mm}:${ss}`;
+
+  const now = new Date();
+  document.getElementById('sb-time').textContent = now.toLocaleTimeString('en-US',{hour12:false}) + ' PKT';
+}
+
+setInterval(updateStatusBar, 1000);
+setInterval(() => {
+  document.getElementById('sb-time').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}) + ' PKT';
+}, 500);
+
+/* ============================================================
+   MAIN SIMULATION TICK
+   ============================================================ */
+function simTick() {
+  if (paused) return;
+  tick++;
+  totalDataPts += SENSOR_KEYS.length;
+  const now = new Date();
+  const ts = now.toLocaleTimeString('en-US',{hour12:false}) + '.' + now.getMilliseconds().toString().padStart(3,'0');
+
+  // battery
+  battLevel = Math.max(20, battLevel - 0.01 + randomNormal(0,0.05));
+
+  SENSOR_KEYS.forEach(key => {
+    const s = SENSOR_CONFIG[key];
+    let v;
+    if (key === 'batt') {
+      v = battLevel;
+    } else {
+      v = s.simulate(tick);
+    }
+    history[key].push({ v, ts });
+    if (history[key].length > MAX_HISTORY) history[key].shift();
+    checkAnomalies(key, v, ts);
+  });
+
+  updateCards();
+  updateCharts();
+  simGPS();
+  simNodes();
+
+  statUpdateCounter++;
+  if (statUpdateCounter % 10 === 0) computeStats();
+
+  updateStatusBar();
+}
+
+/* ============================================================
+   CONTROLS
+   ============================================================ */
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('btn-pause');
+  const statusEl = document.getElementById('sb-status');
+  if (paused) {
+    btn.textContent = '▶ RESUME';
+    btn.classList.add('paused');
+    statusEl.textContent = '⏸ PAUSED';
+    statusEl.style.color = 'var(--neon-amber)';
+  } else {
+    btn.textContent = '⏸ PAUSE';
+    btn.classList.remove('paused');
+    statusEl.textContent = '● LIVE';
+    statusEl.style.color = 'var(--neon-green)';
+  }
+}
+
+function clearHistory() {
+  SENSOR_KEYS.forEach(k => { history[k] = []; });
+  gpsTrack = [];
+  alerts = [];
+  tick = 0;
+  totalDataPts = 0;
+  battLevel = 95;
+  Object.keys(charts).forEach(k => {
+    if (!charts[k]) return;
+    charts[k].data.labels = [];
+    charts[k].data.datasets[0].data = [];
+    charts[k].update('none');
+  });
+  renderAlerts();
+  computeStats();
+  addAlert('system','SYSTEM','History cleared. Simulation reset.','info',new Date().toLocaleTimeString());
+}
+
+function changeRate(val) {
+  updateInterval = parseInt(val);
+  document.getElementById('sb-rate').textContent = val + 'ms';
+  clearInterval(intervalHandle);
+  intervalHandle = setInterval(simTick, updateInterval);
+}
+
+function updateThreshold(key, prop, val, labelId, unit) {
+  SENSOR_CONFIG[key].thresholds[prop] = parseFloat(val);
+  document.getElementById(labelId).textContent = val + unit;
+}
+
+function toggleSensor(key, visible) {
+  sensorVisible[key] = visible;
+  const card = document.getElementById(`card-${key}`);
+  if (card) card.style.opacity = visible ? '1' : '0.35';
+  const chartWrap = document.getElementById(`chart-${key}-wrap`);
+  if (chartWrap) chartWrap.style.opacity = visible ? '1' : '0.2';
+}
+
+/* ============================================================
+   EXPORT CSV
+   ============================================================ */
+function exportCSV() {
+  let csv = 'Timestamp';
+  SENSOR_KEYS.forEach(k => csv += ',' + SENSOR_CONFIG[k].name + ' (' + SENSOR_CONFIG[k].unit + ')');
+  csv += '\n';
+
+  const maxLen = Math.max(...SENSOR_KEYS.map(k => history[k].length));
+  for (let i = 0; i < maxLen; i++) {
+    let row = '';
+    SENSOR_KEYS.forEach((k,j) => {
+      const d = history[k][i];
+      if (j === 0) row += d ? d.ts : '';
+      row += ',' + (d ? SENSOR_CONFIG[k].fmt(d.v) : '');
+    });
+    csv += row + '\n';
+  }
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `iot_sensor_data_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+buildCards();
+initCharts();
+buildNodePanel();
+computeStats();
+
+// start simulation
+intervalHandle = setInterval(simTick, updateInterval);
+
+// initial GPS track seed
+for (let i = 0; i < 5; i++) simGPS();
+
+// initial status bar
+updateStatusBar();
+
+// Initial info alert
+addAlert('system','SYSTEM','Sensor network initialized. All nodes online.','info',new Date().toLocaleTimeString());
+</script>
+</body>
+</html>

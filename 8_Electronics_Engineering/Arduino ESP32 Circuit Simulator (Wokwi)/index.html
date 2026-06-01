@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arduino/ESP32 Circuit Simulator — Haris Hussain</title>
+  <meta name="description" content="Interactive Arduino/ESP32 circuit simulator showcase with working traffic light, temperature monitor, PWM motor, ultrasonic sensor, and GPS logger. Portfolio project by Haris Hussain."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #030a06;
+      --bg-card:  rgba(5,18,10,0.9);
+      --green:    #39ff14;
+      --lime:     #a8ff00;
+      --cyan:     #00ffd5;
+      --amber:    #ffaa00;
+      --red:      #ff3333;
+      --blue:     #33aaff;
+      --purple:   #cc66ff;
+      --muted:    #4a7a5a;
+      --dim:      #1a3a22;
+      --text:     #d4f0dc;
+      --border:   rgba(57,255,20,0.13);
+      --border-h: rgba(57,255,20,0.4);
+      --glow:     0 0 24px rgba(57,255,20,0.2);
+      --r-lg:16px; --r-md:10px; --r-sm:6px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+    /* ── BACKGROUND ── */
+    .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+      background-image:linear-gradient(rgba(57,255,20,0.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(57,255,20,0.025) 1px,transparent 1px);
+      background-size:40px 40px}
+    .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 60% 50% at 20% 20%,rgba(57,255,20,0.06) 0%,transparent 60%),
+        radial-gradient(ellipse 50% 60% at 80% 80%,rgba(0,255,213,0.04) 0%,transparent 60%)}
+    /* Animated PCB traces */
+    .traces{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+    .tr{position:absolute;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);
+      opacity:0;animation:trf 7s linear infinite}
+    .tr:nth-child(1){top:12%;width:220px;animation-delay:0s}
+    .tr:nth-child(2){top:28%;width:160px;animation-delay:2s}
+    .tr:nth-child(3){top:55%;width:280px;animation-delay:4s}
+    .tr:nth-child(4){top:75%;width:190px;animation-delay:1.5s}
+    .tr:nth-child(5){top:40%;width:140px;right:0;animation-delay:3.5s;transform:scaleX(-1)}
+    .tr:nth-child(6){top:65%;width:210px;right:0;animation-delay:5.5s;transform:scaleX(-1)}
+    @keyframes trf{0%{opacity:0;transform:translateX(-60px)}20%{opacity:.7}80%{opacity:.7}100%{opacity:0;transform:translateX(calc(100vw+60px))}}
+
+    /* ── LAYOUT ── */
+    .app{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 24px 60px}
+
+    /* ── HEADER ── */
+    header{padding:32px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px;
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .hb{display:flex;flex-direction:column;gap:5px}
+    .eye{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);letter-spacing:.18em;opacity:.75}
+    h1{font-family:'Orbitron',monospace;font-size:clamp(20px,3.5vw,36px);font-weight:900;
+      background:linear-gradient(135deg,var(--green) 0%,var(--cyan) 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:.03em}
+    .sub{font-size:13px;color:var(--muted)}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .badge{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;border:1px solid}
+    .bg{color:var(--green);border-color:rgba(57,255,20,.3);background:rgba(57,255,20,.06)}
+    .bc{color:var(--cyan);border-color:rgba(0,255,213,.3);background:rgba(0,255,213,.06)}
+    .ba{color:var(--amber);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.06)}
+
+    /* ── STATUS BAR ── */
+    .sbar{display:flex;gap:12px;margin-bottom:26px;padding:12px 18px;background:var(--bg-card);
+      border:1px solid var(--border);border-radius:var(--r-md);backdrop-filter:blur(10px);flex-wrap:wrap;align-items:center}
+    .sdot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);
+      animation:sdp 1.8s ease-in-out infinite;flex-shrink:0}
+    @keyframes sdp{0%,100%{opacity:1;box-shadow:0 0 8px var(--green)}50%{opacity:.4;box-shadow:0 0 3px var(--green)}}
+    .sl{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--green)}
+    .ss{color:var(--dim)}
+    .sm{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted)}
+    .sm b{color:var(--cyan)}
+
+    /* ── CARD ── */
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);
+      backdrop-filter:blur(14px);padding:22px;transition:border-color .3s,box-shadow .3s}
+    .card:hover{border-color:var(--border-h);box-shadow:var(--glow)}
+    .ct{font-family:'Orbitron',monospace;font-size:10.5px;font-weight:700;letter-spacing:.15em;
+      text-transform:uppercase;color:var(--green);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+    .ct::before{content:'';display:block;width:3px;height:13px;background:var(--green);
+      border-radius:2px;box-shadow:0 0 6px var(--green)}
+
+    /* ── PROJECT OVERVIEW GRID ── */
+    .overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:32px}
+    .pcard{padding:20px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--bg-card);
+      backdrop-filter:blur(10px);cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+    .pcard::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:3px;
+      background:var(--ac,var(--green));transform:scaleX(0);transform-origin:left;transition:transform .4s}
+    .pcard:hover,.pcard.active{border-color:var(--border-h);box-shadow:var(--glow)}
+    .pcard.active::after{transform:scaleX(1)}
+    .pcard-icon{font-size:32px;margin-bottom:12px}
+    .pcard-num{font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);letter-spacing:.15em;margin-bottom:4px}
+    .pcard-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
+    .pcard-desc{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+    .pcard-tags{display:flex;gap:5px;flex-wrap:wrap}
+    .ptag{padding:2px 8px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;
+      border:1px solid;color:var(--green);border-color:rgba(57,255,20,.25);background:rgba(57,255,20,.05)}
+    .diff{padding:3px 9px;border-radius:10px;font-size:10px;font-weight:600;margin-left:auto;flex-shrink:0}
+    .diff-inter{color:var(--amber);border:1px solid rgba(255,170,0,.3);background:rgba(255,170,0,.08)}
+    .diff-easy{color:var(--green);border:1px solid rgba(57,255,20,.3);background:rgba(57,255,20,.08)}
+
+    /* ── MAIN TABS ── */
+    .tabs{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap}
+    .tab{padding:9px 20px;border:1px solid var(--border);border-radius:20px;background:transparent;
+      color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+    .tab.active{border-color:var(--green);color:var(--green);background:rgba(57,255,20,.08)}
+    .tab:hover:not(.active){color:var(--text);border-color:var(--border-h)}
+    .panel{display:none}.panel.active{display:block}
+
+    /* ── SIMULATOR LAYOUT ── */
+    .sim-layout{display:grid;grid-template-columns:1fr 380px;gap:22px;align-items:start}
+    @media(max-width:1000px){.sim-layout{grid-template-columns:1fr}}
+
+    /* ── CODE BLOCK ── */
+    .code-wrap{position:relative;background:#010805;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+    .code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+      border-bottom:1px solid var(--border);background:rgba(57,255,20,.04)}
+    .code-lang{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);letter-spacing:.08em}
+    .btn-copy{padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:transparent;
+      color:var(--muted);font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .2s}
+    .btn-copy:hover{border-color:var(--green);color:var(--green)}
+    .code-body{padding:16px;overflow-x:auto;max-height:380px;overflow-y:auto}
+    .code-body pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;
+      counter-reset:line;tab-size:2}
+    .code-body pre .ln{display:inline-block;min-width:30px;color:var(--dim);user-select:none;margin-right:12px}
+    /* Syntax highlight classes */
+    .kw{color:var(--green);font-weight:600}
+    .fn{color:var(--cyan)}
+    .st{color:var(--amber)}
+    .cm{color:#3a6a45;font-style:italic}
+    .nm{color:#ff6ec7}
+    .tp{color:var(--lime)}
+    .pp{color:#ff9944}
+
+    /* ── CIRCUIT SVG ── */
+    .circuit-frame{background:#010805;border:1px solid var(--border);border-radius:var(--r-md);
+      padding:12px;overflow:hidden}
+    .circuit-frame svg{width:100%;height:auto}
+
+    /* ── INTERACTIVE SIMS ── */
+    /* Traffic light */
+    .tl-wrap{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px}
+    .tl-box{background:#111;border:3px solid #333;border-radius:16px;padding:18px 28px;
+      display:flex;flex-direction:column;gap:14px;width:90px;box-shadow:0 4px 20px rgba(0,0,0,.6)}
+    .tl-light{width:54px;height:54px;border-radius:50%;border:2px solid rgba(255,255,255,.1);
+      transition:box-shadow .3s,background .3s;cursor:default}
+    .tl-light.on-red    {background:#ff2222;box-shadow:0 0 20px #ff2222,0 0 40px rgba(255,34,34,.4)}
+    .tl-light.on-yellow {background:#ffcc00;box-shadow:0 0 20px #ffcc00,0 0 40px rgba(255,204,0,.4)}
+    .tl-light.on-green  {background:#22ff44;box-shadow:0 0 20px #22ff44,0 0 40px rgba(34,255,68,.4)}
+    .tl-light.off-red   {background:#3a0808}
+    .tl-light.off-yellow{background:#3a2f00}
+    .tl-light.off-green {background:#083a10}
+    .tl-info{text-align:center}
+    .tl-state{font-family:'Orbitron',monospace;font-size:16px;font-weight:700;letter-spacing:.08em;margin-bottom:4px}
+    .tl-timer{font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--green)}
+    .tl-btn{padding:10px 24px;border:1px solid var(--green);border-radius:8px;background:rgba(57,255,20,.08);
+      color:var(--green);font-family:'Orbitron',monospace;font-size:12px;cursor:pointer;transition:all .2s}
+    .tl-btn:hover{background:rgba(57,255,20,.18);box-shadow:0 0 12px rgba(57,255,20,.3)}
+
+    /* Temperature monitor */
+    .lcd-canvas{border:2px solid rgba(57,255,20,.3);border-radius:8px;display:block;margin:0 auto}
+    .temp-controls{display:flex;flex-direction:column;gap:14px;padding:16px}
+
+    /* Motor */
+    .motor-canvas{display:block;margin:0 auto}
+    .motor-controls{padding:16px}
+
+    /* Ultrasonic */
+    .dist-display{padding:16px}
+    .dist-bar-wrap{height:24px;background:rgba(255,255,255,.06);border-radius:12px;overflow:hidden;margin:10px 0}
+    .dist-bar{height:100%;border-radius:12px;transition:width .3s,background .3s}
+    .dist-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;color:var(--green);text-align:center}
+
+    /* GPS */
+    .gps-canvas{display:block;border:1px solid var(--border);border-radius:var(--r-md);margin:0 auto}
+    .nmea-out{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);
+      background:#010805;border:1px solid var(--border);border-radius:var(--r-sm);
+      padding:10px;height:90px;overflow-y:auto;line-height:1.6}
+
+    /* Serial monitor */
+    .serial{font-family:'JetBrains Mono',monospace;font-size:11px;color:#7aff8a;
+      background:#010805;border:1px solid var(--border);border-radius:var(--r-sm);
+      padding:12px;height:120px;overflow-y:auto;line-height:1.7;margin-top:14px}
+    .serial .ts{color:var(--dim)}
+    .serial .warn{color:var(--amber)}
+
+    /* ── CONTROLS ── */
+    .ctrl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .ctrl-label{font-size:12px;font-weight:600;color:var(--muted)}
+    .ctrl-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)}
+    input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer;
+      background:linear-gradient(90deg,var(--green) var(--pct,50%),rgba(255,255,255,.08) var(--pct,50%))}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+      background:var(--green);box-shadow:0 0 8px rgba(57,255,20,.6);cursor:pointer;transition:transform .2s}
+    input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
+    .btn{padding:9px 18px;border:1px solid var(--border);border-radius:var(--r-md);background:transparent;
+      color:var(--muted);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .25s}
+    .btn:hover,.btn.active-btn{border-color:var(--green);color:var(--green);background:rgba(57,255,20,.06)}
+    .btn-wokwi{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;
+      border:1px solid rgba(57,255,20,.4);border-radius:var(--r-md);background:rgba(57,255,20,.1);
+      color:var(--green);font-family:'Orbitron',monospace;font-size:11px;font-weight:700;
+      cursor:pointer;text-decoration:none;letter-spacing:.05em;transition:all .25s}
+    .btn-wokwi:hover{background:rgba(57,255,20,.2);box-shadow:0 0 16px rgba(57,255,20,.3)}
+
+    /* ── CONCEPTS ── */
+    .concepts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:22px}
+    .concept-card{padding:16px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-card)}
+    .concept-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--cyan);margin-bottom:8px}
+    .concept-body{font-size:12px;color:var(--muted);line-height:1.6}
+    .concept-code{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--green);
+      background:rgba(57,255,20,.05);border:1px solid rgba(57,255,20,.1);border-radius:4px;padding:8px;margin-top:8px;line-height:1.6}
+
+    /* ── COMPONENT LIBRARY ── */
+    .comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+    .comp-card{padding:16px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-card);text-align:center}
+    .comp-icon{font-size:30px;margin-bottom:8px}
+    .comp-name{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px}
+    .comp-desc{font-size:11px;color:var(--muted);line-height:1.5}
+    .comp-pins{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);margin-top:6px}
+
+    /* ── FOOTER ── */
+    footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+    .ft{font-size:12px;color:var(--muted)}.ft strong{color:var(--green)}
+    .stags{display:flex;gap:7px;flex-wrap:wrap}
+    .stag{padding:3px 9px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;
+      color:var(--dim);border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+    .anim{animation:fadeUp .45s ease forwards}
+  </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="traces"><div class="tr"></div><div class="tr"></div><div class="tr"></div><div class="tr"></div><div class="tr"></div><div class="tr"></div></div>
+
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="hb">
+    <div class="eye">◈ PROJECT 8.6 / ELECTRONICS ENGINEERING</div>
+    <h1>Arduino / ESP32 Simulator</h1>
+    <div class="sub">5 Interactive Embedded Circuits · Wokwi Platform · C++ Firmware</div>
+  </div>
+  <div class="badges">
+    <span class="badge bg">C++ / Arduino</span>
+    <span class="badge bc">Wokwi</span>
+    <span class="badge ba">Embedded</span>
+    <a class="btn-wokwi" href="https://wokwi.com" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Open Wokwi
+    </a>
+  </div>
+</header>
+
+<!-- STATUS BAR -->
+<div class="sbar">
+  <div class="sdot"></div>
+  <span class="sl">SIMULATOR ACTIVE</span>
+  <span class="ss">│</span>
+  <span class="sm">Project: <b id="sbProj">Traffic Light</b></span>
+  <span class="ss">│</span>
+  <span class="sm">Board: <b>Arduino Uno</b></span>
+  <span class="ss">│</span>
+  <span class="sm">Lang: <b>C++ / AVR</b></span>
+  <span class="ss">│</span>
+  <span class="sm">Simulated: <b id="sbTime">00:00</b></span>
+</div>
+
+<!-- OVERVIEW CARDS -->
+<div class="card anim" style="margin-bottom:22px">
+  <div class="ct">5 Simulated Circuits</div>
+  <div class="overview-grid" id="overviewGrid">
+    <div class="pcard active" data-proj="0" style="--ac:var(--amber)">
+      <div class="pcard-icon">🌡️</div>
+      <div class="pcard-num">PROJECT 8.6.1</div>
+      <div class="pcard-title">Temperature Monitor</div>
+      <div class="pcard-desc">DHT22 sensor + 16×2 LCD display + alert LED</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="pcard-tags"><span class="ptag">DHT22</span><span class="ptag">LCD</span><span class="ptag">I2C</span></div>
+        <div class="diff diff-easy">Beginner</div>
+      </div>
+    </div>
+    <div class="pcard" data-proj="1" style="--ac:var(--red)">
+      <div class="pcard-icon">🚦</div>
+      <div class="pcard-num">PROJECT 8.6.2</div>
+      <div class="pcard-title">Traffic Light</div>
+      <div class="pcard-desc">Timed LED sequence + pedestrian button interrupt</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="pcard-tags"><span class="ptag">GPIO</span><span class="ptag">ISR</span><span class="ptag">Timer</span></div>
+        <div class="diff diff-easy">Beginner</div>
+      </div>
+    </div>
+    <div class="pcard" data-proj="2" style="--ac:var(--blue)">
+      <div class="pcard-icon">⚙️</div>
+      <div class="pcard-num">PROJECT 8.6.3</div>
+      <div class="pcard-title">PWM Motor Control</div>
+      <div class="pcard-desc">Potentiometer → PWM → DC motor via L298N</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="pcard-tags"><span class="ptag">PWM</span><span class="ptag">ADC</span><span class="ptag">L298N</span></div>
+        <div class="diff diff-inter">Intermediate</div>
+      </div>
+    </div>
+    <div class="pcard" data-proj="3" style="--ac:var(--cyan)">
+      <div class="pcard-icon">📡</div>
+      <div class="pcard-num">PROJECT 8.6.4</div>
+      <div class="pcard-title">Ultrasonic Distance</div>
+      <div class="pcard-desc">HC-SR04 sensor + buzzer alert + serial monitor</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="pcard-tags"><span class="ptag">HC-SR04</span><span class="ptag">UART</span><span class="ptag">Buzzer</span></div>
+        <div class="diff diff-easy">Beginner</div>
+      </div>
+    </div>
+    <div class="pcard" data-proj="4" style="--ac:var(--purple)">
+      <div class="pcard-icon">🛰️</div>
+      <div class="pcard-num">PROJECT 8.6.5</div>
+      <div class="pcard-title">GPS Data Logger</div>
+      <div class="pcard-desc">NEO-6M GPS → NMEA parsing → SD card log</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div class="pcard-tags"><span class="ptag">GPS</span><span class="ptag">SD Card</span><span class="ptag">UART</span></div>
+        <div class="diff diff-inter">Intermediate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs" id="mainTabs">
+  <button class="tab active" data-tab="sim">⚡ Interactive Sim</button>
+  <button class="tab" data-tab="code">💾 Firmware Code</button>
+  <button class="tab" data-tab="circuit">🔌 Circuit Diagram</button>
+  <button class="tab" data-tab="concepts">📚 Key Concepts</button>
+  <button class="tab" data-tab="components">🔩 Component Library</button>
+</div>
+
+<!-- ═══════════════════════════════════
+     SIMULATION PANEL
+══════════════════════════════════════ -->
+<div class="panel active" id="tab-sim">
+  <div class="sim-layout">
+    <!-- Interactive demos -->
+    <div>
+
+      <!-- PROJECT 0: Temperature Monitor -->
+      <div class="card" id="sim0">
+        <div class="ct">🌡️ Temperature Monitor — DHT22 + LCD</div>
+        <canvas id="lcdCanvas" class="lcd-canvas" width="320" height="80"></canvas>
+        <div class="temp-controls">
+          <div class="ctrl-row">
+            <div class="ctrl-label">🌡️ Temperature</div>
+            <div class="ctrl-val" id="tempVal">25.4 °C</div>
+          </div>
+          <input type="range" id="tempSlider" min="0" max="50" value="25" step="0.1"/>
+          <div class="ctrl-row" style="margin-top:12px">
+            <div class="ctrl-label">💧 Humidity</div>
+            <div class="ctrl-val" id="humVal">62.1 %</div>
+          </div>
+          <input type="range" id="humSlider" min="10" max="100" value="62" step="0.5"/>
+          <div style="margin-top:12px;padding:10px;border-radius:8px;border:1px solid;display:flex;align-items:center;gap:10px" id="alertBox">
+            <div id="alertLed" style="width:14px;height:14px;border-radius:50%;background:#3a0808;transition:all .3s"></div>
+            <span id="alertTxt" style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted)">STATUS: NORMAL</span>
+          </div>
+        </div>
+        <div class="serial" id="serial0"></div>
+      </div>
+
+      <!-- PROJECT 1: Traffic Light -->
+      <div class="card" id="sim1" style="display:none">
+        <div class="ct">🚦 Traffic Light Controller</div>
+        <div class="tl-wrap">
+          <div style="display:flex;gap:40px;align-items:center">
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;margin-bottom:8px">VEHICLE</div>
+              <div class="tl-box">
+                <div class="tl-light off-red"   id="tl-red"></div>
+                <div class="tl-light off-yellow" id="tl-yellow"></div>
+                <div class="tl-light off-green"  id="tl-green"></div>
+              </div>
+            </div>
+            <div class="tl-info">
+              <div class="tl-state" id="tlState" style="color:var(--red)">RED</div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:8px">PHASE</div>
+              <div class="tl-timer" id="tlTimer">5</div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:16px">seconds</div>
+              <button class="tl-btn" id="tlPedBtn">🚶 Pedestrian</button>
+              <div style="margin-top:10px;font-size:11px;color:var(--muted)" id="tlPedStatus"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;margin-bottom:8px">WALK</div>
+              <div style="width:60px;height:60px;border-radius:50%;border:2px solid #333;
+                display:flex;align-items:center;justify-content:center;font-size:24px;transition:all .3s" id="walkLight">🚶</div>
+            </div>
+          </div>
+        </div>
+        <div class="serial" id="serial1"></div>
+      </div>
+
+      <!-- PROJECT 2: PWM Motor -->
+      <div class="card" id="sim2" style="display:none">
+        <div class="ct">⚙️ PWM Motor Speed Control</div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:10px 0">
+          <canvas id="motorCanvas" class="motor-canvas" width="160" height="160"></canvas>
+          <div style="flex:1;min-width:200px">
+            <div class="motor-controls">
+              <div class="ctrl-row"><div class="ctrl-label">🎛️ Potentiometer</div><div class="ctrl-val" id="potVal">512</div></div>
+              <input type="range" id="potSlider" min="0" max="1023" value="512"/>
+              <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);margin-bottom:4px">DUTY CYCLE</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--cyan)" id="dutyVal">50%</div>
+                </div>
+                <div style="padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);margin-bottom:4px">EST. RPM</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--green)" id="rpmVal">1500</div>
+                </div>
+                <div style="padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);margin-bottom:4px">PWM PIN</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--amber)">D9</div>
+                </div>
+                <div style="padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center">
+                  <div style="font-size:10px;color:var(--muted);margin-bottom:4px">DIRECTION</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--lime)" id="dirVal">FORWARD ▶</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="serial" id="serial2"></div>
+      </div>
+
+      <!-- PROJECT 3: Ultrasonic -->
+      <div class="card" id="sim3" style="display:none">
+        <div class="ct">📡 Ultrasonic Distance Meter — HC-SR04</div>
+        <div class="dist-display">
+          <div class="dist-val" id="distVal">45 cm</div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px" id="distInch">17.7 inches</div>
+          <div class="dist-bar-wrap"><div class="dist-bar" id="distBar" style="width:45%;background:var(--green)"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:16px">
+            <span>0 cm</span><span>100 cm</span>
+          </div>
+          <div class="ctrl-row"><div class="ctrl-label">🎚️ Simulated Distance</div><div class="ctrl-val" id="distSliderVal">45 cm</div></div>
+          <input type="range" id="distSlider" min="2" max="100" value="45"/>
+          <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:8px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace">BUZZER STATUS</div>
+            <div id="buzzerStatus" style="font-size:13px;font-weight:600;color:var(--green)">🔇 Silent (> 30 cm)</div>
+            <div id="buzzerFreq" style="font-size:11px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace"></div>
+          </div>
+        </div>
+        <div class="serial" id="serial3"></div>
+      </div>
+
+      <!-- PROJECT 4: GPS -->
+      <div class="card" id="sim4" style="display:none">
+        <div class="ct">🛰️ GPS Data Logger — NEO-6M</div>
+        <canvas id="gpsCanvas" class="gps-canvas" width="420" height="200"></canvas>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 0">
+          <div style="padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">LATITUDE</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)" id="gpsLat">31.5204°N</div>
+          </div>
+          <div style="padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">LONGITUDE</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)" id="gpsLon">74.3587°E</div>
+          </div>
+          <div style="padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">SPEED</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)" id="gpsSpd">2.3 km/h</div>
+          </div>
+          <div style="padding:10px;border:1px solid var(--border);border-radius:8px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);margin-bottom:3px">HEADING</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--lime)" id="gpsHdg">045° NE</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace">NMEA OUTPUT</div>
+        <div class="nmea-out" id="nmeaOut"></div>
+      </div>
+
+    </div>
+
+    <!-- Right side: serial + wokwi link -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="card">
+        <div class="ct">Wokwi Simulator</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">
+          Run these circuits live in your browser on the free Wokwi platform — no hardware needed.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px" id="wokwiLinks">
+          <a class="btn-wokwi" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" style="justify-content:center">🌡️ Open Temp Monitor</a>
+          <a class="btn-wokwi" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" style="justify-content:center">🚦 Open Traffic Light</a>
+          <a class="btn-wokwi" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" style="justify-content:center">⚙️ Open Motor Control</a>
+          <a class="btn-wokwi" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" style="justify-content:center">📡 Open Distance Meter</a>
+          <a class="btn-wokwi" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" style="justify-content:center">🛰️ Open GPS Logger</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Board Specs</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">MCU</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">ATmega328P</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">Clock</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">16 MHz</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">Flash</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">32 KB</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">SRAM</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">2 KB</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">Digital I/O</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">14 pins</td></tr>
+          <tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 0;color:var(--muted)">PWM Pins</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">6 (D3,D5,D6,D9,D10,D11)</td></tr>
+          <tr><td style="padding:6px 0;color:var(--muted)">Analog In</td><td style="font-family:'JetBrains Mono',monospace;color:var(--green);text-align:right">6 × 10-bit ADC</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     CODE PANEL
+══════════════════════════════════════ -->
+<div class="panel" id="tab-code">
+  <div class="card">
+    <div class="ct">Arduino Firmware</div>
+    <div class="tabs" id="codeTabs" style="margin-bottom:18px">
+      <button class="tab active" data-code="0">🌡️ Temp Monitor</button>
+      <button class="tab" data-code="1">🚦 Traffic Light</button>
+      <button class="tab" data-code="2">⚙️ Motor PWM</button>
+      <button class="tab" data-code="3">📡 Ultrasonic</button>
+      <button class="tab" data-code="4">🛰️ GPS Logger</button>
+    </div>
+    <div id="codeDisplay"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     CIRCUIT PANEL
+══════════════════════════════════════ -->
+<div class="panel" id="tab-circuit">
+  <div class="card">
+    <div class="ct">Circuit Schematic</div>
+    <div class="tabs" id="circTabs" style="margin-bottom:18px">
+      <button class="tab active" data-circ="0">🌡️ Temp Monitor</button>
+      <button class="tab" data-circ="1">🚦 Traffic Light</button>
+      <button class="tab" data-circ="2">⚙️ Motor</button>
+      <button class="tab" data-circ="3">📡 Ultrasonic</button>
+      <button class="tab" data-circ="4">🛰️ GPS</button>
+    </div>
+    <div class="circuit-frame" id="circDisplay"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     CONCEPTS PANEL
+══════════════════════════════════════ -->
+<div class="panel" id="tab-concepts">
+  <div class="card">
+    <div class="ct">Key Embedded Concepts</div>
+    <div class="concepts-grid">
+      <div class="concept-card">
+        <div class="concept-title">GPIO & Digital I/O</div>
+        <div class="concept-body">General Purpose I/O pins control LEDs, read buttons, and interface sensors. pinMode() configures direction; digitalWrite()/digitalRead() operate it.</div>
+        <div class="concept-code">pinMode(LED_PIN, OUTPUT);<br>digitalWrite(LED_PIN, HIGH);<br>int btn = digitalRead(BTN_PIN);</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">PWM Output</div>
+        <div class="concept-body">Pulse Width Modulation simulates analog output by rapidly switching a digital pin. Duty cycle (0–255) controls average voltage — used for motor speed and LED brightness.</div>
+        <div class="concept-code">// 0=off, 128=half, 255=full<br>analogWrite(MOTOR_PIN, 128);<br>// freq ≈ 490 Hz (D9/D10)</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">ADC — Analog Read</div>
+        <div class="concept-body">10-bit ADC converts 0–5V analog signals to 0–1023 integers. Used for potentiometers, temperature sensors, and any variable voltage source.</div>
+        <div class="concept-code">int raw = analogRead(A0);<br>float volt = raw * (5.0/1023);<br>float temp = (volt-0.5)*100;</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">I2C Protocol</div>
+        <div class="concept-body">Two-wire serial bus (SDA + SCL) connecting multiple devices. LCD displays, OLED screens, and sensors like BME280 use I2C. Master/slave with 7-bit addresses.</div>
+        <div class="concept-code">#include &lt;Wire.h&gt;<br>Wire.begin();<br>Wire.beginTransmission(0x27);<br>Wire.write(data);<br>Wire.endTransmission();</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">UART / Serial</div>
+        <div class="concept-body">Universal Asynchronous Receiver/Transmitter enables serial communication. Used for GPS NMEA sentences, debugging via Serial Monitor, and Bluetooth modules.</div>
+        <div class="concept-code">Serial.begin(9600);<br>Serial.print("Temp: ");<br>Serial.println(temperature);<br>// GPS: SoftwareSerial</div>
+      </div>
+      <div class="concept-card">
+        <div class="concept-title">Interrupts (ISR)</div>
+        <div class="concept-body">Hardware interrupts pause the main loop to handle urgent events like button presses instantly, without polling. attachInterrupt() registers a handler function.</div>
+        <div class="concept-code">attachInterrupt(<br>  digitalPinToInterrupt(2),<br>  buttonISR,<br>  FALLING<br>);<br>void buttonISR() { pressed=true; }</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     COMPONENTS PANEL
+══════════════════════════════════════ -->
+<div class="panel" id="tab-components">
+  <div class="card">
+    <div class="ct">Component Library</div>
+    <div class="comp-grid">
+      <div class="comp-card"><div class="comp-icon">🌡️</div><div class="comp-name">DHT22</div><div class="comp-desc">Temperature & humidity sensor. ±0.5°C accuracy, 1-wire protocol.</div><div class="comp-pins">VCC · DATA · GND</div></div>
+      <div class="comp-card"><div class="comp-icon">📺</div><div class="comp-name">LCD 16×2</div><div class="comp-desc">Character display, 16 cols × 2 rows. I2C backpack on 0x27.</div><div class="comp-pins">SDA · SCL · VCC · GND</div></div>
+      <div class="comp-card"><div class="comp-icon">📡</div><div class="comp-name">HC-SR04</div><div class="comp-desc">Ultrasonic ranging 2–400 cm. Trig pulse → Echo pulse width.</div><div class="comp-pins">VCC · TRIG · ECHO · GND</div></div>
+      <div class="comp-card"><div class="comp-icon">🛰️</div><div class="comp-name">NEO-6M GPS</div><div class="comp-desc">GPS module, 9600 baud NMEA output. Fix in ~30s outdoors.</div><div class="comp-pins">VCC · TX · RX · GND</div></div>
+      <div class="comp-card"><div class="comp-icon">⚡</div><div class="comp-name">L298N Driver</div><div class="comp-desc">Dual H-bridge motor driver, up to 2A per channel, 5–35V.</div><div class="comp-pins">IN1·IN2·ENA · OUT1·OUT2</div></div>
+      <div class="comp-card"><div class="comp-icon">💡</div><div class="comp-name">LED (×3 colors)</div><div class="comp-desc">Standard 5mm LEDs. Red/Yellow/Green, 220Ω series resistor.</div><div class="comp-pins">Anode(+) · Cathode(−)</div></div>
+      <div class="comp-card"><div class="comp-icon">🔘</div><div class="comp-name">Pushbutton</div><div class="comp-desc">SPST tactile switch. 10kΩ pull-down resistor on input pin.</div><div class="comp-pins">2 terminals (SPST)</div></div>
+      <div class="comp-card"><div class="comp-icon">🎛️</div><div class="comp-name">Potentiometer</div><div class="comp-desc">10kΩ rotary pot. Wiper to analog input for voltage divider.</div><div class="comp-pins">VCC · WIPER · GND</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="ft">Built by <strong>Haris Hussain</strong> · Space Science, University of Punjab · Project 8.6 / Electronics Engineering</div>
+  <div class="stags">
+    <span class="stag">C++ / Arduino</span><span class="stag">Wokwi</span><span class="stag">GPIO</span>
+    <span class="stag">PWM</span><span class="stag">I2C</span><span class="stag">UART</span><span class="stag">ISR</span>
+  </div>
+</footer>
+</div><!-- .app -->
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+
+/* ══════════════════════════════
+   UPTIME TIMER
+══════════════════════════════ */
+const startTime=Date.now();
+setInterval(()=>{
+  const s=Math.floor((Date.now()-startTime)/1000);
+  $('sbTime').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+},1000);
+
+/* ══════════════════════════════
+   OVERVIEW → SELECT PROJECT
+══════════════════════════════ */
+let activeProj=0;
+document.querySelectorAll('.pcard').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.pcard').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  activeProj=+c.dataset.proj;
+  showSim(activeProj);
+  $('sbProj').textContent=c.querySelector('.pcard-title').textContent;
+}));
+function showSim(i){
+  [0,1,2,3,4].forEach(j=>{const s=$('sim'+j);if(s)s.style.display=j===i?'':'none'});
+}
+
+/* ══════════════════════════════
+   MAIN TABS
+══════════════════════════════ */
+document.querySelectorAll('#mainTabs .tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#mainTabs .tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    $('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ══════════════════════════════
+   SLIDER UTIL
+══════════════════════════════ */
+function setPct(el){
+  const p=((+el.value - +el.min)/(+el.max - +el.min)*100).toFixed(1)+'%';
+  el.style.setProperty('--pct',p);
+}
+document.querySelectorAll('input[type=range]').forEach(el=>{
+  el.addEventListener('input',()=>setPct(el));setPct(el);
+});
+
+/* ══════════════════════════════
+   PROJECT 0 — TEMP MONITOR
+══════════════════════════════ */
+const lcdCtx=$('lcdCanvas').getContext('2d');
+function drawLCD(temp,hum){
+  const c=lcdCtx,W=320,H=80;
+  c.fillStyle='#0a2010';c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(57,255,20,0.2)';c.lineWidth=1;c.strokeRect(0,0,W,H);
+  c.fillStyle='#39ff14';c.font='bold 18px JetBrains Mono,monospace';c.textBaseline='middle';
+  c.fillText(`Temp: ${(+temp).toFixed(1)} C`,16,22);
+  c.fillText(`Hum:  ${(+hum).toFixed(1)} %`,16,58);
+  // Cursor blink
+  if(Math.floor(Date.now()/500)%2){c.fillStyle='#39ff14';c.fillRect(260,10,12,20)}
+}
+let serialInterval0;
+function startSerial0(){
+  clearInterval(serialInterval0);
+  serialInterval0=setInterval(()=>{
+    const t=+$('tempSlider').value,h=+$('humSlider').value;
+    const line=document.createElement('div');
+    const warn=t>30;
+    line.innerHTML=`<span class="ts">[${new Date().toLocaleTimeString()}]</span> Temp=${t.toFixed(1)}C Hum=${h.toFixed(1)}% ${warn?'<span class="warn">⚠ ALERT!</span>':'OK'}`;
+    const s=$('serial0');s.appendChild(line);s.scrollTop=s.scrollHeight;
+    if(s.children.length>20)s.removeChild(s.firstChild);
+  },1500);
+}
+$('tempSlider').addEventListener('input',()=>{
+  const t=+$('tempSlider').value;
+  $('tempVal').textContent=t.toFixed(1)+' °C';
+  const alert_box=$('alertBox'),led=$('alertLed'),txt=$('alertTxt');
+  if(t>30){led.style.background='#ff2222';led.style.boxShadow='0 0 8px #ff2222';
+    txt.textContent='STATUS: ⚠ HIGH TEMP ALERT!';txt.style.color='#ff2222';
+    alert_box.style.borderColor='rgba(255,34,34,.4)';}
+  else{led.style.background='#3a0808';led.style.boxShadow='none';
+    txt.textContent='STATUS: NORMAL';txt.style.color='var(--muted)';
+    alert_box.style.borderColor='var(--border)';}
+});
+$('humSlider').addEventListener('input',()=>{$('humVal').textContent=(+$('humSlider').value).toFixed(1)+' %'});
+function animLCD(){
+  drawLCD($('tempSlider').value,$('humSlider').value);requestAnimationFrame(animLCD);
+}
+animLCD();startSerial0();
+
+/* ══════════════════════════════
+   PROJECT 1 — TRAFFIC LIGHT
+══════════════════════════════ */
+const TL_PHASES=[
+  {name:'RED',color:'#ff2222',duration:5,r:'on-red',y:'off-yellow',g:'off-green'},
+  {name:'GREEN',color:'#22ff44',duration:4,r:'off-red',y:'off-yellow',g:'on-green'},
+  {name:'YELLOW',color:'#ffcc00',duration:1,r:'off-red',y:'on-yellow',g:'off-green'},
+];
+let tlPhase=0,tlCount=TL_PHASES[0].duration,tlPedPending=false,tlPedActive=false,tlInterval;
+function setTLPhase(i){
+  tlPhase=i%3;const p=TL_PHASES[tlPhase];
+  $('tl-red').className='tl-light '+p.r;
+  $('tl-yellow').className='tl-light '+p.y;
+  $('tl-green').className='tl-light '+p.g;
+  $('tlState').textContent=p.name;$('tlState').style.color=p.color;
+  tlCount=p.duration;
+}
+function tlTick(){
+  tlCount--;$('tlTimer').textContent=tlCount;
+  if(tlCount<=0){
+    if(tlPedPending&&tlPhase===2){tlPedActive=true;tlPedPending=false;
+      $('walkLight').style.background='rgba(57,255,20,.2)';$('walkLight').style.borderColor=var_('--green');
+      $('tlPedStatus').textContent='🟢 WALK SIGNAL ACTIVE';
+      setTimeout(()=>{$('walkLight').style.background='transparent';$('tlPedStatus').textContent='';
+        tlPedActive=false;setTLPhase(tlPhase+1);},3000);return;}
+    setTLPhase(tlPhase+1);
+  }
+  // Serial log
+  if(tlCount===TL_PHASES[tlPhase].duration){
+    const line=document.createElement('div');
+    line.innerHTML=`<span class="ts">[${new Date().toLocaleTimeString()}]</span> Phase: ${TL_PHASES[tlPhase].name} | Duration: ${TL_PHASES[tlPhase].duration}s`;
+    const s=$('serial1');s.appendChild(line);s.scrollTop=s.scrollHeight;
+    if(s.children.length>20)s.removeChild(s.firstChild);
+  }
+}
+function var_(name){return getComputedStyle(document.documentElement).getPropertyValue(name)}
+setTLPhase(0);tlInterval=setInterval(tlTick,1000);
+$('tlPedBtn').addEventListener('click',()=>{
+  if(tlPhase===1){tlPedPending=true;$('tlPedStatus').textContent='⏳ Walk request queued…'}
+});
+
+/* ══════════════════════════════
+   PROJECT 2 — MOTOR
+══════════════════════════════ */
+const mCtx=$('motorCanvas').getContext('2d');
+let motorAngle=0,motorSpeed=0;
+$('potSlider').addEventListener('input',()=>{
+  const v=+$('potSlider').value;
+  const duty=Math.round(v/1023*100);
+  $('potVal').textContent=v;$('dutyVal').textContent=duty+'%';
+  $('rpmVal').textContent=Math.round(duty*30);
+  motorSpeed=duty/100*0.15;
+});
+function drawMotor(){
+  const c=mCtx,cx=80,cy=80,r=55;
+  c.clearRect(0,0,160,160);
+  // Outer ring
+  c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);
+  c.strokeStyle='rgba(57,255,20,0.3)';c.lineWidth=3;c.stroke();
+  // Spinning blades
+  for(let i=0;i<4;i++){
+    const a=motorAngle+i*Math.PI/2;
+    c.save();c.translate(cx,cy);c.rotate(a);
+    c.fillStyle='rgba(57,255,20,0.7)';
+    c.beginPath();c.ellipse(20,0,18,6,0,0,Math.PI*2);c.fill();
+    c.restore();
+  }
+  // Center
+  c.beginPath();c.arc(cx,cy,10,0,Math.PI*2);
+  c.fillStyle='var(--green)';c.fill();
+  // Direction arrow
+  const duty=+$('dutyVal').textContent.replace('%','')||50;
+  $('dirVal').textContent=duty>0?'FORWARD ▶':'STOPPED ■';
+  motorAngle+=motorSpeed;
+  requestAnimationFrame(drawMotor);
+}
+motorSpeed=0.08;drawMotor();
+// Serial
+setInterval(()=>{
+  const line=document.createElement('div');
+  const v=+$('potSlider').value,duty=Math.round(v/1023*100);
+  line.innerHTML=`<span class="ts">[${new Date().toLocaleTimeString()}]</span> ADC=${v} | PWM=${duty}% | RPM≈${duty*30}`;
+  const s=$('serial2');s.appendChild(line);s.scrollTop=s.scrollHeight;
+  if(s.children.length>20)s.removeChild(s.firstChild);
+},2000);
+
+/* ══════════════════════════════
+   PROJECT 3 — ULTRASONIC
+══════════════════════════════ */
+$('distSlider').addEventListener('input',()=>{
+  const d=+$('distSlider').value;
+  $('distSliderVal').textContent=d+' cm';$('distVal').textContent=d+' cm';
+  $('distInch').textContent=(d/2.54).toFixed(1)+' inches';
+  const pct=d;
+  const bar=$('distBar');
+  bar.style.width=pct+'%';
+  if(d<15){bar.style.background='#ff2222';$('buzzerStatus').textContent='🔊 ALERT! Very close (<15cm)';$('buzzerStatus').style.color='#ff2222';$('buzzerFreq').textContent='Beep freq: '+(Math.round((15-d)*10))+' Hz';}
+  else if(d<30){bar.style.background='var(--amber)';$('buzzerStatus').textContent='🔉 Warning (< 30 cm)';$('buzzerStatus').style.color='var(--amber)';$('buzzerFreq').textContent='Beep freq: '+Math.round((30-d)*3)+' Hz';}
+  else{bar.style.background='var(--green)';$('buzzerStatus').textContent='🔇 Silent (> 30 cm)';$('buzzerStatus').style.color='var(--green)';$('buzzerFreq').textContent='';}
+});
+setInterval(()=>{
+  const d=+$('distSlider').value;
+  const line=document.createElement('div');
+  line.innerHTML=`<span class="ts">[${new Date().toLocaleTimeString()}]</span> Distance: ${d} cm (${(d/2.54).toFixed(1)} in) ${d<15?'<span class="warn">ALERT</span>':''}`;
+  const s=$('serial3');s.appendChild(line);s.scrollTop=s.scrollHeight;
+  if(s.children.length>20)s.removeChild(s.firstChild);
+},1200);
+
+/* ══════════════════════════════
+   PROJECT 4 — GPS
+══════════════════════════════ */
+const gCtx=$('gpsCanvas').getContext('2d');
+let gpsX=210,gpsY=100,gpsTrack=[],gpsHead=45,gpsSpd=2.3;
+const gpsLat0=31.5204,gpsLon0=74.3587;
+let gpsLat=gpsLat0,gpsLon=gpsLon0;
+function drawGPS(){
+  const W=420,H=200,c=gCtx;
+  c.fillStyle='#010508';c.fillRect(0,0,W,H);
+  // Grid
+  c.strokeStyle='rgba(0,255,213,0.08)';c.lineWidth=1;
+  for(let x=0;x<W;x+=40){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke()}
+  for(let y=0;y<H;y+=40){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke()}
+  // Track
+  if(gpsTrack.length>1){
+    c.beginPath();c.moveTo(gpsTrack[0].x,gpsTrack[0].y);
+    gpsTrack.forEach(p=>c.lineTo(p.x,p.y));
+    c.strokeStyle='rgba(0,255,213,0.5)';c.lineWidth=2;c.stroke();
+  }
+  // Current pos
+  c.beginPath();c.arc(gpsX,gpsY,8,0,Math.PI*2);
+  c.fillStyle='rgba(57,255,20,0.2)';c.fill();
+  c.beginPath();c.arc(gpsX,gpsY,5,0,Math.PI*2);
+  c.fillStyle='var(--green)';c.shadowColor='var(--green)';c.shadowBlur=10;c.fill();
+  c.shadowBlur=0;
+  // Heading arrow
+  const hRad=gpsHead*Math.PI/180;
+  c.beginPath();c.moveTo(gpsX,gpsY);
+  c.lineTo(gpsX+18*Math.sin(hRad),gpsY-18*Math.cos(hRad));
+  c.strokeStyle='var(--cyan)';c.lineWidth=2;c.stroke();
+  requestAnimationFrame(drawGPS);
+}
+drawGPS();
+function updateGPS(){
+  const step=1.5;
+  gpsHead+=(Math.random()-0.5)*20;
+  gpsX+=step*Math.sin(gpsHead*Math.PI/180);
+  gpsY-=step*Math.cos(gpsHead*Math.PI/180);
+  gpsX=Math.max(10,Math.min(410,gpsX));
+  gpsY=Math.max(10,Math.min(190,gpsY));
+  gpsSpd=+(2+Math.random()*3).toFixed(1);
+  gpsLat=+(gpsLat0+(gpsY-100)*0.00005).toFixed(6);
+  gpsLon=+(gpsLon0+(gpsX-210)*0.00005).toFixed(6);
+  gpsTrack.push({x:gpsX,y:gpsY});
+  if(gpsTrack.length>80)gpsTrack.shift();
+  $('gpsLat').textContent=Math.abs(gpsLat).toFixed(4)+'°N';
+  $('gpsLon').textContent=Math.abs(gpsLon).toFixed(4)+'°E';
+  $('gpsSpd').textContent=gpsSpd+' km/h';
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  $('gpsHdg').textContent=Math.round(((gpsHead%360)+360)%360)+'° '+dirs[Math.round(((gpsHead%360)+360)%360/45)%8];
+  // NMEA sentence
+  const nmea=$('nmeaOut');
+  const line=document.createElement('div');
+  const lat=Math.abs(gpsLat),lon=Math.abs(gpsLon);
+  const latD=Math.floor(lat),latM=(lat-latD)*60;
+  const lonD=Math.floor(lon),lonM=(lon-lonD)*60;
+  line.style.color='rgba(57,255,20,0.8)';
+  line.textContent=`$GPRMC,${new Date().toISOString().slice(11,19).replace(/:/g,'')},A,${String(latD).padStart(2,'0')}${latM.toFixed(4)},N,${String(lonD).padStart(3,'0')}${lonM.toFixed(4)},E,${gpsSpd.toFixed(1)},${Math.round(gpsHead)},*6F`;
+  nmea.appendChild(line);nmea.scrollTop=nmea.scrollHeight;
+  if(nmea.children.length>8)nmea.removeChild(nmea.firstChild);
+}
+setInterval(updateGPS,1200);
+
+/* ══════════════════════════════
+   CODE DISPLAY
+══════════════════════════════ */
+const CODES=[
+`#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
+
+#define DHT_PIN 2
+#define DHT_TYPE DHT22
+#define LED_PIN 13
+#define TEMP_THRESHOLD 30.0
+
+DHT dht(DHT_PIN, DHT_TYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+  lcd.init();
+  lcd.backlight();
+  pinMode(LED_PIN, OUTPUT);
+  lcd.print("Arduino Monitor");
+  delay(1500);
+  lcd.clear();
+}
+
+void loop() {
+  float humidity    = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Sensor read error!");
+    return;
+  }
+
+  // Update LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature, 1);
+  lcd.print(" C  ");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Hum:  ");
+  lcd.print(humidity, 1);
+  lcd.print(" %  ");
+
+  // Temperature alert
+  if (temperature > TEMP_THRESHOLD) {
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("ALERT: High temperature!");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  Serial.print("Temp=");
+  Serial.print(temperature);
+  Serial.print("C  Hum=");
+  Serial.print(humidity);
+  Serial.println("%");
+
+  delay(2000);
+}`,
+
+`// Traffic Light Controller with Pedestrian Button
+
+#define RED_PIN    9
+#define YELLOW_PIN 10
+#define GREEN_PIN  11
+#define PED_BTN    2
+
+volatile bool pedestrianRequest = false;
+
+void pedestrianISR() {
+  pedestrianRequest = true;
+}
+
+void allOff() {
+  digitalWrite(RED_PIN,    LOW);
+  digitalWrite(YELLOW_PIN, LOW);
+  digitalWrite(GREEN_PIN,  LOW);
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(RED_PIN,    OUTPUT);
+  pinMode(YELLOW_PIN, OUTPUT);
+  pinMode(GREEN_PIN,  OUTPUT);
+  pinMode(PED_BTN,    INPUT_PULLUP);
+  attachInterrupt(
+    digitalPinToInterrupt(PED_BTN),
+    pedestrianISR,
+    FALLING
+  );
+  Serial.println("Traffic Light Ready");
+}
+
+void loop() {
+  // RED phase — 5 seconds
+  allOff();
+  digitalWrite(RED_PIN, HIGH);
+  Serial.println("Phase: RED (5s)");
+  delay(5000);
+
+  // GREEN phase — 4 seconds
+  allOff();
+  digitalWrite(GREEN_PIN, HIGH);
+  Serial.println("Phase: GREEN (4s)");
+  delay(4000);
+
+  // YELLOW phase — 1 second
+  allOff();
+  digitalWrite(YELLOW_PIN, HIGH);
+  Serial.println("Phase: YELLOW (1s)");
+  delay(1000);
+
+  // Pedestrian walk signal
+  if (pedestrianRequest) {
+    pedestrianRequest = false;
+    allOff();
+    digitalWrite(RED_PIN, HIGH); // Stop vehicles
+    Serial.println("WALK SIGNAL ACTIVE (3s)");
+    delay(3000);
+  }
+}`,
+
+`// PWM Motor Speed Control via Potentiometer
+
+#define POT_PIN   A0
+#define PWM_PIN   9   // Must be PWM-capable
+#define IN1_PIN   7   // L298N direction
+#define IN2_PIN   8
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(PWM_PIN, OUTPUT);
+  pinMode(IN1_PIN, OUTPUT);
+  pinMode(IN2_PIN, OUTPUT);
+
+  // Forward direction
+  digitalWrite(IN1_PIN, HIGH);
+  digitalWrite(IN2_PIN, LOW);
+
+  Serial.println("PWM Motor Control Ready");
+}
+
+void loop() {
+  int potValue  = analogRead(POT_PIN);      // 0–1023
+  int pwmValue  = map(potValue, 0, 1023, 0, 255);  // 0–255
+  int dutyCycle = map(potValue, 0, 1023, 0, 100);  // 0–100%
+  int rpm       = dutyCycle * 30;                  // Estimated RPM
+
+  analogWrite(PWM_PIN, pwmValue);
+
+  Serial.print("ADC=");  Serial.print(potValue);
+  Serial.print(" PWM="); Serial.print(pwmValue);
+  Serial.print(" Duty=");Serial.print(dutyCycle);
+  Serial.print("% RPM≈");Serial.println(rpm);
+
+  delay(100);
+}`,
+
+`// Ultrasonic Distance Meter — HC-SR04
+
+#define TRIG_PIN 9
+#define ECHO_PIN 10
+#define BUZZER   8
+#define WARN_CM  30
+#define CRIT_CM  15
+
+long measureDistance() {
+  digitalWrite(TRIG_PIN, LOW);  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  return duration * 0.0343 / 2;  // cm
+}
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(BUZZER,   OUTPUT);
+  Serial.println("Distance Meter Ready");
+}
+
+void loop() {
+  long dist = measureDistance();
+
+  Serial.print("Distance: ");
+  Serial.print(dist);
+  Serial.print(" cm (");
+  Serial.print(dist / 2.54, 1);
+  Serial.println(" in)");
+
+  // Buzzer alerts
+  if (dist < CRIT_CM) {
+    tone(BUZZER, 1000);    // Continuous alarm
+    Serial.println("CRITICAL: Obstacle very close!");
+  } else if (dist < WARN_CM) {
+    tone(BUZZER, 500, 100); // Short beep
+    Serial.println("WARNING: Object nearby");
+  } else {
+    noTone(BUZZER);
+  }
+
+  delay(200);
+}`,
+
+`#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+#include <SD.h>
+
+#define GPS_RX  4
+#define GPS_TX  3
+#define SD_CS   10
+
+TinyGPSPlus gps;
+SoftwareSerial gpsSerial(GPS_RX, GPS_TX);
+File logFile;
+
+void setup() {
+  Serial.begin(115200);
+  gpsSerial.begin(9600);
+
+  if (!SD.begin(SD_CS)) {
+    Serial.println("SD card failed!");
+    while (true);
+  }
+  logFile = SD.open("gpslog.csv", FILE_WRITE);
+  logFile.println("lat,lon,speed_kmh,heading,satellites,time");
+  logFile.flush();
+  Serial.println("GPS Data Logger Ready");
+}
+
+void loop() {
+  while (gpsSerial.available() > 0) {
+    char c = gpsSerial.read();
+    gps.encode(c);
+  }
+
+  if (gps.location.isUpdated()) {
+    double lat  = gps.location.lat();
+    double lon  = gps.location.lng();
+    double spd  = gps.speed.kmph();
+    double hdg  = gps.course.deg();
+    int    sats = gps.satellites.value();
+
+    // Log to SD
+    logFile.print(lat, 6); logFile.print(",");
+    logFile.print(lon, 6); logFile.print(",");
+    logFile.print(spd, 1); logFile.print(",");
+    logFile.print(hdg, 1); logFile.print(",");
+    logFile.print(sats);   logFile.print(",");
+    logFile.println(gps.time.value());
+    logFile.flush();
+
+    // Serial output
+    Serial.print("$GPFIX Lat="); Serial.print(lat,6);
+    Serial.print(" Lon=");       Serial.print(lon,6);
+    Serial.print(" Spd=");       Serial.print(spd,1);
+    Serial.print("km/h Sats=");  Serial.println(sats);
+  }
+
+  delay(500);
+}`
+];
+
+function syntaxHL(code){
+  const keywords=['void','int','float','long','bool','boolean','byte','char','double','unsigned',
+    'if','else','for','while','do','return','true','false','include','define','setup','loop','const'];
+  const types=['HIGH','LOW','INPUT','OUTPUT','INPUT_PULLUP','FALLING','RISING','FILE_WRITE'];
+  let h=code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Comments
+  h=h.replace(/(\/\/[^\n]*)/g,'<span class="cm">$1</span>');
+  // Strings
+  h=h.replace(/"([^"]*)"/g,'<span class="st">"$1"</span>');
+  // #include #define
+  h=h.replace(/(#\w+)/g,'<span class="pp">$1</span>');
+  // Keywords
+  keywords.forEach(k=>{ h=h.replace(new RegExp(`\\b(${k})\\b`,'g'),'<span class="kw">$1</span>'); });
+  types.forEach(k=>{ h=h.replace(new RegExp(`\\b(${k})\\b`,'g'),'<span class="tp">$1</span>'); });
+  // Numbers
+  h=h.replace(/\b(\d+\.?\d*)\b/g,'<span class="nm">$1</span>');
+  // Function calls
+  h=h.replace(/(\w+)(?=\s*\()/g,'<span class="fn">$1</span>');
+  return h;
+}
+
+function renderCode(idx){
+  const lines=CODES[idx].split('\n');
+  let html='<pre>';
+  lines.forEach((l,i)=>{html+=`<span class="ln">${String(i+1).padStart(2,' ')}</span>${syntaxHL(l)}\n`});
+  html+='</pre>';
+  const d=$('codeDisplay');
+  d.innerHTML=`<div class="code-wrap">
+    <div class="code-header">
+      <span class="code-lang">C++ / Arduino (.ino)</span>
+      <button class="btn-copy" id="btnCopy">Copy</button>
+    </div>
+    <div class="code-body">${html}</div>
+  </div>`;
+  $('btnCopy').addEventListener('click',()=>{
+    navigator.clipboard.writeText(CODES[idx]);
+    $('btnCopy').textContent='Copied!';
+    setTimeout(()=>$('btnCopy').textContent='Copy',2000);
+  });
+}
+document.querySelectorAll('#codeTabs .tab').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#codeTabs .tab').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');renderCode(+b.dataset.code);
+  });
+});
+renderCode(0);
+
+/* ══════════════════════════════
+   CIRCUIT DIAGRAMS (SVG)
+══════════════════════════════ */
+const CIRCUITS=[
+// 0: Temp Monitor
+`<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" style="background:#010805">
+  <defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#888"/></marker></defs>
+  <!-- Arduino -->
+  <rect x="30" y="80" width="120" height="160" rx="6" fill="rgba(0,80,180,0.15)" stroke="#33aaff" stroke-width="1.5"/>
+  <text x="90" y="100" text-anchor="middle" fill="#33aaff" font-family="Orbitron,monospace" font-size="9" font-weight="700">ARDUINO UNO</text>
+  <text x="90" y="115" text-anchor="middle" fill="#3a6a9a" font-family="JetBrains Mono,monospace" font-size="8">ATmega328P</text>
+  <!-- Pins -->
+  <text x="145" y="145" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D2</text>
+  <text x="145" y="165" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">SDA</text>
+  <text x="145" y="185" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">SCL</text>
+  <text x="145" y="205" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D13</text>
+  <text x="145" y="225" fill="#ff4444" font-family="JetBrains Mono,monospace" font-size="8">5V</text>
+  <text x="145" y="240" fill="#888" font-family="JetBrains Mono,monospace" font-size="8">GND</text>
+  <!-- DHT22 -->
+  <rect x="240" y="100" width="80" height="60" rx="6" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="1.5"/>
+  <text x="280" y="126" text-anchor="middle" fill="#ffaa00" font-family="Orbitron,monospace" font-size="9" font-weight="700">DHT22</text>
+  <text x="280" y="145" text-anchor="middle" fill="#a07020" font-family="JetBrains Mono,monospace" font-size="8">Temp+Humid</text>
+  <!-- LCD -->
+  <rect x="240" y="185" width="140" height="50" rx="6" fill="rgba(57,255,20,0.08)" stroke="#39ff14" stroke-width="1.5"/>
+  <text x="310" y="207" text-anchor="middle" fill="#39ff14" font-family="Orbitron,monospace" font-size="9" font-weight="700">LCD 16×2</text>
+  <text x="310" y="222" text-anchor="middle" fill="#3a7a2a" font-family="JetBrains Mono,monospace" font-size="8">I2C Addr: 0x27</text>
+  <!-- LED -->
+  <circle cx="460" cy="130" r="16" fill="rgba(255,34,34,0.15)" stroke="#ff2244" stroke-width="1.5"/>
+  <text x="460" y="134" text-anchor="middle" fill="#ff2244" font-family="JetBrains Mono,monospace" font-size="10">LED</text>
+  <text x="460" y="158" text-anchor="middle" fill="#8a3030" font-family="JetBrains Mono,monospace" font-size="8">Alert</text>
+  <!-- Wires -->
+  <line x1="150" y1="142" x2="240" y2="130" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="150" y1="162" x2="240" y2="198" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="150" y1="182" x2="240" y2="208" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="150" y1="202" x2="444" y2="130" stroke="#ff2244" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="150" y1="222" x2="240" y2="152" stroke="#ff4444" stroke-width="1" opacity=".6"/>
+  <line x1="150" y1="237" x2="240" y2="152" stroke="#555" stroke-width="1" opacity=".6"/>
+  <!-- Labels -->
+  <text x="190" y="136" fill="#3399ff" font-family="JetBrains Mono,monospace" font-size="8">DATA</text>
+  <text x="190" y="195" fill="#3399ff" font-family="JetBrains Mono,monospace" font-size="8">SDA</text>
+  <text x="190" y="218" fill="#3399ff" font-family="JetBrains Mono,monospace" font-size="8">SCL</text>
+</svg>`,
+
+// 1: Traffic Light
+`<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" style="background:#010805">
+  <!-- Arduino -->
+  <rect x="30" y="60" width="120" height="180" rx="6" fill="rgba(0,80,180,0.15)" stroke="#33aaff" stroke-width="1.5"/>
+  <text x="90" y="82" text-anchor="middle" fill="#33aaff" font-family="Orbitron,monospace" font-size="9" font-weight="700">ARDUINO UNO</text>
+  <text x="145" y="130" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D9</text>
+  <text x="145" y="155" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D10</text>
+  <text x="145" y="180" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D11</text>
+  <text x="145" y="205" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D2</text>
+  <!-- Traffic box -->
+  <rect x="280" y="50" width="80" height="160" rx="12" fill="#1a1a1a" stroke="#444" stroke-width="2"/>
+  <circle cx="320" cy="95"  r="24" fill="#3a0808" stroke="#ff2222" stroke-width="2"/>
+  <circle cx="320" cy="145" r="24" fill="#3a2f00" stroke="#ffcc00" stroke-width="2"/>
+  <circle cx="320" cy="195" r="24" fill="#083a10" stroke="#22ff44" stroke-width="2"/>
+  <text x="320" y="99"  text-anchor="middle" fill="#ff2222" font-family="JetBrains Mono,monospace" font-size="10">R</text>
+  <text x="320" y="149" text-anchor="middle" fill="#ffcc00" font-family="JetBrains Mono,monospace" font-size="10">Y</text>
+  <text x="320" y="199" text-anchor="middle" fill="#22ff44" font-family="JetBrains Mono,monospace" font-size="10">G</text>
+  <!-- Button -->
+  <rect x="460" y="130" width="60" height="40" rx="8" fill="rgba(57,255,20,0.08)" stroke="#39ff14" stroke-width="1.5"/>
+  <text x="490" y="152" text-anchor="middle" fill="#39ff14" font-family="JetBrains Mono,monospace" font-size="9">BTN</text>
+  <!-- Resistors (220Ω) -->
+  <rect x="230" y="88"  width="30" height="12" rx="3" fill="rgba(255,170,0,0.15)" stroke="#ffaa00" stroke-width="1"/>
+  <rect x="230" y="138" width="30" height="12" rx="3" fill="rgba(255,170,0,0.15)" stroke="#ffaa00" stroke-width="1"/>
+  <rect x="230" y="188" width="30" height="12" rx="3" fill="rgba(255,170,0,0.15)" stroke="#ffaa00" stroke-width="1"/>
+  <text x="245" y="97"  text-anchor="middle" fill="#ffaa00" font-family="JetBrains Mono,monospace" font-size="7">220Ω</text>
+  <text x="245" y="147" text-anchor="middle" fill="#ffaa00" font-family="JetBrains Mono,monospace" font-size="7">220Ω</text>
+  <text x="245" y="197" text-anchor="middle" fill="#ffaa00" font-family="JetBrains Mono,monospace" font-size="7">220Ω</text>
+  <!-- Wires -->
+  <line x1="150" y1="127" x2="230" y2="94"  stroke="#ff2222" stroke-width="1.5"/>
+  <line x1="150" y1="152" x2="230" y2="144" stroke="#ffcc00" stroke-width="1.5"/>
+  <line x1="150" y1="177" x2="230" y2="194" stroke="#22ff44" stroke-width="1.5"/>
+  <line x1="150" y1="202" x2="460" y2="150" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="260" y1="94"  x2="280" y2="95"  stroke="#ff2222" stroke-width="1.5"/>
+  <line x1="260" y1="144" x2="280" y2="145" stroke="#ffcc00" stroke-width="1.5"/>
+  <line x1="260" y1="194" x2="280" y2="195" stroke="#22ff44" stroke-width="1.5"/>
+</svg>`,
+
+// 2: Motor
+`<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" style="background:#010805">
+  <rect x="30" y="60" width="120" height="180" rx="6" fill="rgba(0,80,180,0.15)" stroke="#33aaff" stroke-width="1.5"/>
+  <text x="90" y="82" text-anchor="middle" fill="#33aaff" font-family="Orbitron,monospace" font-size="9" font-weight="700">ARDUINO UNO</text>
+  <text x="145" y="130" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">A0</text>
+  <text x="145" y="155" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D9(PWM)</text>
+  <text x="145" y="180" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D7</text>
+  <text x="145" y="205" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D8</text>
+  <!-- Potentiometer -->
+  <circle cx="250" cy="100" r="30" fill="rgba(0,229,255,0.06)" stroke="#00e5ff" stroke-width="1.5"/>
+  <text x="250" y="97" text-anchor="middle" fill="#00e5ff" font-family="Orbitron,monospace" font-size="8">POT</text>
+  <text x="250" y="110" text-anchor="middle" fill="#3a7a8a" font-family="JetBrains Mono,monospace" font-size="7">10kΩ</text>
+  <!-- L298N -->
+  <rect x="340" y="70" width="100" height="100" rx="6" fill="rgba(191,95,255,0.08)" stroke="#bf5fff" stroke-width="1.5"/>
+  <text x="390" y="100" text-anchor="middle" fill="#bf5fff" font-family="Orbitron,monospace" font-size="9" font-weight="700">L298N</text>
+  <text x="390" y="116" text-anchor="middle" fill="#6a3a9a" font-family="JetBrains Mono,monospace" font-size="7">H-Bridge</text>
+  <text x="390" y="130" text-anchor="middle" fill="#6a3a9a" font-family="JetBrains Mono,monospace" font-size="7">Motor Driver</text>
+  <text x="390" y="148" text-anchor="middle" fill="#6a3a9a" font-family="JetBrains Mono,monospace" font-size="7">2A Max</text>
+  <!-- DC Motor -->
+  <circle cx="510" cy="120" r="35" fill="rgba(57,255,20,0.06)" stroke="#39ff14" stroke-width="2"/>
+  <text x="510" y="116" text-anchor="middle" fill="#39ff14" font-family="Orbitron,monospace" font-size="8" font-weight="700">DC</text>
+  <text x="510" y="129" text-anchor="middle" fill="#39ff14" font-family="Orbitron,monospace" font-size="8" font-weight="700">MOTOR</text>
+  <!-- Wires -->
+  <line x1="150" y1="127" x2="220" y2="100" stroke="#00e5ff" stroke-width="1.5"/>
+  <line x1="150" y1="152" x2="340" y2="115" stroke="#bf5fff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="150" y1="177" x2="340" y2="130" stroke="#3399ff" stroke-width="1.5"/>
+  <line x1="150" y1="202" x2="340" y2="145" stroke="#3399ff" stroke-width="1.5"/>
+  <line x1="280" y1="100" x2="340" y2="120" stroke="#00e5ff" stroke-width="1.5"/>
+  <line x1="440" y1="120" x2="475" y2="120" stroke="#39ff14" stroke-width="2"/>
+</svg>`,
+
+// 3: Ultrasonic
+`<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" style="background:#010805">
+  <rect x="30" y="60" width="120" height="180" rx="6" fill="rgba(0,80,180,0.15)" stroke="#33aaff" stroke-width="1.5"/>
+  <text x="90" y="82" text-anchor="middle" fill="#33aaff" font-family="Orbitron,monospace" font-size="9" font-weight="700">ARDUINO UNO</text>
+  <text x="145" y="130" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D9(TRIG)</text>
+  <text x="145" y="155" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D10(ECHO)</text>
+  <text x="145" y="180" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D8(BUZZ)</text>
+  <!-- HC-SR04 -->
+  <rect x="270" y="70" width="160" height="80" rx="8" fill="rgba(0,229,255,0.07)" stroke="#00e5ff" stroke-width="1.5"/>
+  <circle cx="300" cy="110" r="20" fill="rgba(0,229,255,0.1)" stroke="#00e5ff" stroke-width="1.5"/>
+  <circle cx="400" cy="110" r="20" fill="rgba(0,229,255,0.1)" stroke="#00e5ff" stroke-width="1.5"/>
+  <text x="350" y="136" text-anchor="middle" fill="#00e5ff" font-family="Orbitron,monospace" font-size="9" font-weight="700">HC-SR04</text>
+  <text x="300" y="114" text-anchor="middle" fill="#3a7a8a" font-family="JetBrains Mono,monospace" font-size="7">T</text>
+  <text x="400" y="114" text-anchor="middle" fill="#3a7a8a" font-family="JetBrains Mono,monospace" font-size="7">R</text>
+  <!-- Ultrasonic waves -->
+  <path d="M 432 95 Q 455 110 432 125" stroke="#00e5ff" stroke-width="1" fill="none" opacity=".5"/>
+  <path d="M 445 88 Q 475 110 445 132" stroke="#00e5ff" stroke-width="1" fill="none" opacity=".3"/>
+  <!-- Buzzer -->
+  <circle cx="350" cy="195" r="24" fill="rgba(255,170,0,0.1)" stroke="#ffaa00" stroke-width="1.5"/>
+  <text x="350" y="192" text-anchor="middle" fill="#ffaa00" font-family="Orbitron,monospace" font-size="8" font-weight="700">BUZZ</text>
+  <text x="350" y="206" text-anchor="middle" fill="#8a6020" font-family="JetBrains Mono,monospace" font-size="7">5V Active</text>
+  <!-- Wires -->
+  <line x1="150" y1="127" x2="270" y2="100" stroke="#3399ff" stroke-width="1.5"/>
+  <line x1="150" y1="152" x2="270" y2="120" stroke="#3399ff" stroke-width="1.5"/>
+  <line x1="150" y1="177" x2="326" y2="195" stroke="#ffaa00" stroke-width="1.5"/>
+</svg>`,
+
+// 4: GPS
+`<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" style="background:#010805">
+  <rect x="20" y="60" width="120" height="180" rx="6" fill="rgba(0,80,180,0.15)" stroke="#33aaff" stroke-width="1.5"/>
+  <text x="80" y="82" text-anchor="middle" fill="#33aaff" font-family="Orbitron,monospace" font-size="9" font-weight="700">ARDUINO UNO</text>
+  <text x="135" y="130" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D4(RX)</text>
+  <text x="135" y="155" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D3(TX)</text>
+  <text x="135" y="180" fill="#4a8a6a" font-family="JetBrains Mono,monospace" font-size="8">D10(SD CS)</text>
+  <!-- NEO-6M GPS -->
+  <rect x="235" y="70" width="120" height="80" rx="8" fill="rgba(191,95,255,0.07)" stroke="#bf5fff" stroke-width="1.5"/>
+  <text x="295" y="100" text-anchor="middle" fill="#bf5fff" font-family="Orbitron,monospace" font-size="9" font-weight="700">NEO-6M</text>
+  <text x="295" y="116" text-anchor="middle" fill="#6a3a9a" font-family="JetBrains Mono,monospace" font-size="7">GPS Module</text>
+  <text x="295" y="132" text-anchor="middle" fill="#6a3a9a" font-family="JetBrains Mono,monospace" font-size="7">9600 baud NMEA</text>
+  <!-- GPS Antenna arc -->
+  <path d="M 360 80 Q 380 70 370 90" stroke="#bf5fff" stroke-width="1.5" fill="none"/>
+  <path d="M 363 73 Q 390 60 378 95" stroke="#bf5fff" stroke-width="1" fill="none" opacity=".5"/>
+  <!-- SD Card Module -->
+  <rect x="235" y="175" width="120" height="60" rx="8" fill="rgba(57,255,20,0.07)" stroke="#39ff14" stroke-width="1.5"/>
+  <text x="295" y="200" text-anchor="middle" fill="#39ff14" font-family="Orbitron,monospace" font-size="9" font-weight="700">SD MODULE</text>
+  <text x="295" y="216" text-anchor="middle" fill="#3a7a2a" font-family="JetBrains Mono,monospace" font-size="7">SPI / CS Pin 10</text>
+  <!-- Satellite SVG -->
+  <text x="500" y="110" text-anchor="middle" font-size="36">🛰️</text>
+  <path d="M 500 125 Q 420 160 295 155" stroke="#bf5fff" stroke-width="1" fill="none" stroke-dasharray="4,3" opacity=".4"/>
+  <!-- Wires -->
+  <line x1="140" y1="127" x2="235" y2="100" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="140" y1="152" x2="235" y2="115" stroke="#3399ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="140" y1="177" x2="235" y2="200" stroke="#39ff14" stroke-width="1.5"/>
+</svg>`
+];
+
+function renderCircuit(idx){
+  $('circDisplay').innerHTML=CIRCUITS[idx];
+}
+document.querySelectorAll('#circTabs .tab').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#circTabs .tab').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');renderCircuit(+b.dataset.circ);
+  });
+});
+renderCircuit(0);
+</script>
+</body>
+</html>

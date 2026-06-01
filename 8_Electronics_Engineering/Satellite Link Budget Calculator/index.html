@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Satellite Link Budget Calculator | Project 8.5</title>
+  <meta name="description" content="Professional satellite link budget calculator with real-time SNR, FSPL, EIRP, and link margin computations. LEO, MEO, GEO orbit support. NASA mission control aesthetic." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ==================== CSS VARIABLES & RESET ==================== */
+    :root {
+      --bg-deep:       #020408;
+      --bg-card:       #080e18;
+      --bg-card2:      #0a1525;
+      --bg-panel:      #060c16;
+      --neon-blue:     #0099ff;
+      --neon-cyan:     #00e5ff;
+      --neon-silver:   #c0d8ff;
+      --neon-green:    #00ff88;
+      --neon-red:      #ff3355;
+      --neon-yellow:   #ffd700;
+      --text-primary:  #e8f4ff;
+      --text-secondary:#7ab0d8;
+      --text-muted:    #3a5872;
+      --border-blue:   rgba(0,153,255,0.25);
+      --border-cyan:   rgba(0,229,255,0.15);
+      --glow-blue:     0 0 20px rgba(0,153,255,0.4);
+      --glow-cyan:     0 0 20px rgba(0,229,255,0.4);
+      --glow-green:    0 0 20px rgba(0,255,136,0.4);
+      --glow-red:      0 0 20px rgba(255,51,85,0.4);
+      --font-display:  'Orbitron', sans-serif;
+      --font-body:     'Inter', sans-serif;
+      --font-mono:     'JetBrains Mono', monospace;
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     18px;
+      --radius-xl:     24px;
+      --transition:    0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ==================== STARFIELD ==================== */
+    #starfield {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      animation: twinkle var(--dur, 3s) ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--min-op, 0.15); transform: scale(1); }
+      50%       { opacity: var(--max-op, 0.9);  transform: scale(1.3); }
+    }
+
+    /* ==================== LAYOUT ==================== */
+    .app-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ==================== HEADER ==================== */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 28px 0 24px;
+      border-bottom: 1px solid var(--border-blue);
+      position: relative;
+    }
+    .header-satellite-anim { flex-shrink: 0; }
+    .header-text { flex: 1; }
+    .header-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--neon-cyan);
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.3);
+      border-radius: 4px;
+      padding: 3px 10px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .header-title {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 4vw, 40px);
+      font-weight: 800;
+      line-height: 1.1;
+      background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan), var(--neon-silver));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      letter-spacing: 1px;
+    }
+    .header-sub {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+    .header-meta {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .header-meta span {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .header-meta strong {
+      color: var(--neon-blue);
+    }
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--neon-green);
+      margin-top: 4px;
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--neon-green);
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ==================== STATUS BAR ==================== */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      background: linear-gradient(90deg, rgba(0,153,255,0.05), rgba(0,229,255,0.03), rgba(0,153,255,0.05));
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-md);
+      margin: 16px 0;
+      flex-wrap: wrap;
+      overflow: hidden;
+      position: relative;
+    }
+    .status-bar::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+      animation: scan-line 4s linear infinite;
+    }
+    @keyframes scan-line {
+      0%   { left: -60%; }
+      100% { left: 160%; }
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .status-label { color: var(--text-muted); }
+    .status-value { color: var(--neon-cyan); font-weight: 600; }
+    .status-sep { color: var(--text-muted); }
+    .status-pass { color: var(--neon-green); text-shadow: var(--glow-green); font-weight: 700; }
+    .status-fail { color: var(--neon-red);   text-shadow: var(--glow-red);   font-weight: 700; }
+
+    /* ==================== SECTION TITLES ==================== */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--neon-blue);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border-blue), transparent);
+    }
+
+    /* ==================== ORBIT SELECTOR ==================== */
+    .orbit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .orbit-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-blue);
+      border-radius: var(--radius-lg);
+      padding: 20px 16px;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .orbit-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(ellipse at 50% 0%, rgba(0,153,255,0.1), transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .orbit-card:hover { border-color: rgba(0,153,255,0.5); transform: translateY(-2px); }
+    .orbit-card:hover::before { opacity: 1; }
+    .orbit-card.selected {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 0 1px var(--neon-cyan), var(--glow-cyan), inset 0 0 30px rgba(0,229,255,0.05);
+    }
+    .orbit-card.selected::before { opacity: 1; }
+    .orbit-icon { width: 90px; height: 70px; margin: 0 auto 12px; display: block; }
+    .orbit-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: 1px;
+    }
+    .orbit-altitude {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--neon-cyan);
+      margin-top: 4px;
+    }
+    .orbit-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .orbit-card.selected .orbit-name { color: var(--neon-cyan); }
+
+    /* ==================== MAIN GRID ==================== */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .main-grid, .orbit-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ==================== PANEL / CARD ==================== */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+      opacity: 0.4;
+    }
+    .panel-full { grid-column: 1 / -1; }
+
+    /* ==================== FORM ELEMENTS ==================== */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 7px;
+      letter-spacing: 0.3px;
+    }
+    .form-label-unit {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .form-label-computed {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--neon-cyan);
+      background: rgba(0,229,255,0.08);
+      border: 1px solid rgba(0,229,255,0.2);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--neon-blue) var(--pct, 50%), rgba(0,153,255,0.15) var(--pct, 50%));
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 10px var(--neon-cyan), 0 0 4px white;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 10px var(--neon-cyan);
+      border: none;
+      cursor: pointer;
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .range-row input[type="range"] { flex: 1; }
+    .range-number {
+      width: 72px;
+      flex-shrink: 0;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--neon-cyan);
+      background: rgba(0,153,255,0.08);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-sm);
+      padding: 5px 8px;
+      text-align: right;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .range-number:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 0 2px rgba(0,229,255,0.15);
+    }
+    select {
+      width: 100%;
+      background: rgba(0,153,255,0.07);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 9px 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230099ff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 30px;
+    }
+    select:focus {
+      border-color: var(--neon-blue);
+      box-shadow: 0 0 0 2px rgba(0,153,255,0.2);
+    }
+    select option { background: #0a1525; }
+
+    /* ==================== EIRP DISPLAY ==================== */
+    .eirp-display {
+      background: linear-gradient(135deg, rgba(0,153,255,0.08), rgba(0,229,255,0.04));
+      border: 1px solid rgba(0,229,255,0.3);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .eirp-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+    }
+    .eirp-value {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-cyan);
+    }
+    .eirp-unit {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* ==================== LINK MARGIN DISPLAY ==================== */
+    .link-margin-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-xl);
+      padding: 32px;
+      margin-bottom: 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .lm-section-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+    .lm-gauge-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .lm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      padding: 10px 28px;
+      border-radius: 50px;
+      transition: all var(--transition);
+    }
+    .lm-badge.pass {
+      color: var(--neon-green);
+      background: rgba(0,255,136,0.1);
+      border: 2px solid var(--neon-green);
+      box-shadow: var(--glow-green);
+    }
+    .lm-badge.fail {
+      color: var(--neon-red);
+      background: rgba(255,51,85,0.1);
+      border: 2px solid var(--neon-red);
+      box-shadow: var(--glow-red);
+    }
+    .lm-badge-icon { font-size: 20px; }
+    .lm-value-big {
+      font-family: var(--font-mono);
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      transition: color var(--transition), text-shadow var(--transition);
+    }
+    .lm-value-big.pass { color: var(--neon-green); text-shadow: var(--glow-green); }
+    .lm-value-big.fail { color: var(--neon-red);   text-shadow: var(--glow-red);   }
+    .lm-value-unit { font-family: var(--font-mono); font-size: 16px; color: var(--text-secondary); }
+
+    .lm-stats-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .lm-stat-item { text-align: left; }
+    .lm-stat-item:nth-child(even) { text-align: right; }
+    .lm-stat-label {
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .lm-stat-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--neon-blue);
+    }
+    .lm-stat-unit { font-size: 11px; color: var(--text-secondary); }
+
+    /* ==================== PROGRESS BAR ==================== */
+    .margin-bar-wrap {
+      width: 100%;
+      margin-top: 16px;
+    }
+    .margin-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .margin-bar-track {
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .margin-bar-fill {
+      height: 100%;
+      border-radius: 8px;
+      transition: width 0.4s ease, background 0.4s ease;
+      position: relative;
+    }
+    .margin-bar-fill.pass {
+      background: linear-gradient(90deg, rgba(0,255,136,0.5), var(--neon-green));
+      box-shadow: 0 0 10px var(--neon-green);
+    }
+    .margin-bar-fill.fail {
+      background: linear-gradient(90deg, rgba(255,51,85,0.5), var(--neon-red));
+      box-shadow: 0 0 10px var(--neon-red);
+    }
+
+    /* ==================== SEMICIRCLE GAUGE ==================== */
+    #gaugeCanvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ==================== BUDGET TABLE ==================== */
+    .budget-table-wrap {
+      overflow-x: auto;
+    }
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+    .budget-table th {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-blue);
+      text-align: left;
+    }
+    .budget-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(0,153,255,0.08);
+      color: var(--text-primary);
+      transition: background 0.2s;
+    }
+    .budget-table tr:hover td { background: rgba(0,153,255,0.05); }
+    .budget-table .td-value { color: var(--neon-cyan); font-weight: 600; }
+    .budget-table .td-unit { color: var(--text-muted); font-size: 11px; }
+    .budget-table .row-margin-pass td { background: rgba(0,255,136,0.05); }
+    .budget-table .row-margin-fail td { background: rgba(255,51,85,0.05); }
+    .budget-table .row-margin-pass .td-value { color: var(--neon-green); text-shadow: var(--glow-green); }
+    .budget-table .row-margin-fail .td-value { color: var(--neon-red);   text-shadow: var(--glow-red);   }
+    .budget-table .td-section {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--neon-blue);
+      background: rgba(0,153,255,0.05);
+      padding: 6px 14px;
+    }
+
+    /* ==================== EQUATION DISPLAY ==================== */
+    .equation-wrap {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 2;
+      overflow-x: auto;
+    }
+    .eq-highlight { color: var(--neon-cyan); font-weight: 600; }
+    .eq-result { color: var(--neon-green); font-weight: 700; }
+    .eq-label { color: var(--neon-blue); }
+
+    /* ==================== CHARTS ==================== */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px)  { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .chart-title {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--neon-blue);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ==================== ANTENNA PATTERN ==================== */
+    .antenna-canvas-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    /* ==================== FREQ INFO ==================== */
+    .freq-info-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+    .freq-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .freq-info-item {
+      background: rgba(0,153,255,0.05);
+      border: 1px solid rgba(0,153,255,0.12);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .freq-info-item label {
+      font-family: var(--font-body);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .freq-info-item span {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--neon-cyan);
+    }
+    .freq-applications {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ==================== PRESETS ==================== */
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 800px) { .presets-grid { grid-template-columns: 1fr 1fr; } }
+    .preset-btn {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border-blue);
+      border-radius: var(--radius-md);
+      padding: 14px 12px;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+    .preset-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 0% 100%, rgba(0,153,255,0.1), transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+    .preset-btn:hover { border-color: rgba(0,229,255,0.4); transform: translateY(-2px); }
+    .preset-btn:hover::before { opacity: 1; }
+    .preset-icon { font-size: 22px; margin-bottom: 8px; }
+    .preset-name {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+    }
+    .preset-desc { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ==================== EXPORT BUTTONS ==================== */
+    .export-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      font-weight: 600;
+      padding: 11px 22px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid;
+      cursor: pointer;
+      transition: all var(--transition);
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: currentColor;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn:hover::before { opacity: 0.08; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-blue {
+      color: var(--neon-blue);
+      border-color: var(--neon-blue);
+      box-shadow: var(--glow-blue);
+    }
+    .btn-cyan {
+      color: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+      box-shadow: var(--glow-cyan);
+    }
+    .btn:active { transform: translateY(0); }
+
+    /* ==================== ORBIT SVG ANIMATION ==================== */
+    .orbit-anim-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-blue);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      overflow: hidden;
+    }
+    #orbitSvg { display: block; }
+
+    /* ==================== SCROLLBAR ==================== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: rgba(0,153,255,0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.5); }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 700px) {
+      .app-header { flex-direction: column; align-items: flex-start; }
+      .header-meta { text-align: left; }
+      .lm-section-grid { grid-template-columns: 1fr; }
+      .lm-stats-col { flex-direction: row; flex-wrap: wrap; }
+      .orbit-icon { width: 70px; height: 55px; }
+    }
+
+    /* Tooltip */
+    .tooltip-wrap { position: relative; display: inline-block; }
+    .tooltip-icon {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: rgba(0,153,255,0.2);
+      border: 1px solid var(--neon-blue);
+      font-size: 9px;
+      color: var(--neon-blue);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: help;
+      margin-left: 5px;
+    }
+    .tooltip-text {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0a1525;
+      border: 1px solid var(--neon-blue);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      z-index: 100;
+      box-shadow: var(--glow-blue);
+    }
+    .tooltip-wrap:hover .tooltip-text { display: block; }
+
+    /* Animated satellite orbit viz */
+    #satPath { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: none; }
+    @keyframes drawOrbit { to { stroke-dashoffset: 0; } }
+  </style>
+</head>
+<body>
+<!-- STARFIELD -->
+<div id="starfield"></div>
+
+<div class="app-wrapper">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-satellite-anim">
+      <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
+        <circle cx="35" cy="35" r="33" stroke="rgba(0,153,255,0.2)" stroke-width="1.5"/>
+        <circle cx="35" cy="35" r="26" stroke="rgba(0,229,255,0.12)" stroke-width="1"/>
+        <circle cx="35" cy="35" r="8" fill="rgba(0,153,255,0.3)" stroke="#0099ff" stroke-width="1.5"/>
+        <circle cx="35" cy="35" r="4" fill="#00e5ff"/>
+        <g transform="translate(50, 10)" id="hdr-sat">
+          <rect x="-10" y="-3" width="20" height="6" rx="1.5" fill="rgba(0,153,255,0.5)" stroke="#0099ff" stroke-width="1"/>
+          <rect x="-18" y="-7" width="8" height="14" rx="1" fill="rgba(0,229,255,0.4)" stroke="#00e5ff" stroke-width="0.8"/>
+          <rect x="10" y="-7" width="8" height="14" rx="1" fill="rgba(0,229,255,0.4)" stroke="#00e5ff" stroke-width="0.8"/>
+          <circle cx="0" cy="0" r="2" fill="#00e5ff" opacity="0.8"/>
+        </g>
+        <animateTransform href="#hdr-sat" attributeName="transform" type="rotate" from="0 35 35" to="360 35 35" dur="8s" repeatCount="indefinite"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <div class="header-badge">Project 8.5 · Electronics Engineering</div>
+      <h1 class="header-title">Satellite Link Budget Calculator</h1>
+      <p class="header-sub">Professional RF link analysis for LEO · MEO · GEO orbital systems</p>
+    </div>
+    <div class="header-meta">
+      <span>Haris Hussain</span>
+      <span>Space Science · <strong>University of Punjab</strong></span>
+      <span class="live-dot">LIVE CALCULATION</span>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-item">
+      <span class="status-label">SCENARIO:</span>
+      <span class="status-value" id="sb-scenario">Custom</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">EIRP:</span>
+      <span class="status-value" id="sb-eirp">—</span>
+      <span class="status-label">dBW</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">FSPL:</span>
+      <span class="status-value" id="sb-fspl">—</span>
+      <span class="status-label">dB</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">SNR:</span>
+      <span class="status-value" id="sb-snr">—</span>
+      <span class="status-label">dB</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">MARGIN:</span>
+      <span id="sb-margin" class="status-value">—</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">BAND:</span>
+      <span class="status-value" id="sb-band">S-Band</span>
+    </div>
+    <span class="status-sep">|</span>
+    <div class="status-item">
+      <span class="status-label">ORBIT:</span>
+      <span class="status-value" id="sb-orbit">LEO</span>
+    </div>
+  </div>
+
+  <!-- PRESET SCENARIOS -->
+  <div class="section-title">⬡ Preset Scenarios</div>
+  <div class="presets-grid">
+    <button class="preset-btn" id="preset-iss" onclick="loadPreset('iss')">
+      <div class="preset-icon">🚀</div>
+      <div class="preset-name">ISS / ARISS</div>
+      <div class="preset-desc">Amateur Radio 145.825 MHz</div>
+    </button>
+    <button class="preset-btn" id="preset-gps" onclick="loadPreset('gps')">
+      <div class="preset-icon">🛰️</div>
+      <div class="preset-name">GPS L1 Signal</div>
+      <div class="preset-desc">MEO 20,200 km · 1575.42 MHz</div>
+    </button>
+    <button class="preset-btn" id="preset-noaa" onclick="loadPreset('noaa')">
+      <div class="preset-icon">🌦️</div>
+      <div class="preset-name">NOAA Weather</div>
+      <div class="preset-desc">APT 137 MHz · LEO 850 km</div>
+    </button>
+    <button class="preset-btn" id="preset-iridium" onclick="loadPreset('iridium')">
+      <div class="preset-icon">📡</div>
+      <div class="preset-name">Iridium SBD</div>
+      <div class="preset-desc">L-Band 1.625 GHz · 780 km</div>
+    </button>
+  </div>
+
+  <!-- ORBIT SELECTOR -->
+  <div class="section-title">⬡ Orbit Selection</div>
+  <div class="orbit-grid">
+    <!-- LEO -->
+    <div class="orbit-card selected" id="orbit-leo" onclick="selectOrbit('leo')">
+      <svg class="orbit-icon" viewBox="0 0 90 70" fill="none">
+        <circle cx="45" cy="35" r="14" fill="rgba(0,153,255,0.2)" stroke="#0099ff" stroke-width="1.5"/>
+        <circle cx="45" cy="35" r="8" fill="rgba(0,100,180,0.5)"/>
+        <ellipse cx="45" cy="35" rx="28" ry="9" stroke="rgba(0,229,255,0.5)" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+        <circle cx="73" cy="35" r="3" fill="#00e5ff">
+          <animateTransform attributeName="transform" type="rotate" from="0 45 35" to="360 45 35" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        <text x="45" y="62" text-anchor="middle" fill="#7ab0d8" font-size="8" font-family="Orbitron, sans-serif">LEO</text>
+      </svg>
+      <div class="orbit-name">LOW EARTH ORBIT</div>
+      <div class="orbit-altitude">400 – 2,000 km</div>
+      <div class="orbit-desc">ISS · Starlink · Hubble</div>
+    </div>
+    <!-- MEO -->
+    <div class="orbit-card" id="orbit-meo" onclick="selectOrbit('meo')">
+      <svg class="orbit-icon" viewBox="0 0 90 70" fill="none">
+        <circle cx="45" cy="35" r="10" fill="rgba(0,153,255,0.2)" stroke="#0099ff" stroke-width="1.5"/>
+        <circle cx="45" cy="35" r="6" fill="rgba(0,100,180,0.5)"/>
+        <ellipse cx="45" cy="35" rx="35" ry="14" stroke="rgba(0,229,255,0.5)" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+        <circle cx="80" cy="35" r="3" fill="#00e5ff">
+          <animateTransform attributeName="transform" type="rotate" from="0 45 35" to="360 45 35" dur="5s" repeatCount="indefinite"/>
+        </circle>
+        <text x="45" y="62" text-anchor="middle" fill="#7ab0d8" font-size="8" font-family="Orbitron, sans-serif">MEO</text>
+      </svg>
+      <div class="orbit-name">MEDIUM EARTH ORBIT</div>
+      <div class="orbit-altitude">2,000 – 35,786 km</div>
+      <div class="orbit-desc">GPS · Galileo · GLONASS</div>
+    </div>
+    <!-- GEO -->
+    <div class="orbit-card" id="orbit-geo" onclick="selectOrbit('geo')">
+      <svg class="orbit-icon" viewBox="0 0 90 70" fill="none">
+        <circle cx="45" cy="35" r="8" fill="rgba(0,153,255,0.2)" stroke="#0099ff" stroke-width="1.5"/>
+        <circle cx="45" cy="35" r="4.5" fill="rgba(0,100,180,0.5)"/>
+        <ellipse cx="45" cy="35" rx="42" ry="18" stroke="rgba(0,229,255,0.5)" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+        <circle cx="87" cy="35" r="3" fill="#00e5ff">
+          <animateTransform attributeName="transform" type="rotate" from="0 45 35" to="360 45 35" dur="8s" repeatCount="indefinite"/>
+        </circle>
+        <text x="45" y="62" text-anchor="middle" fill="#7ab0d8" font-size="8" font-family="Orbitron, sans-serif">GEO</text>
+      </svg>
+      <div class="orbit-name">GEOSTATIONARY ORBIT</div>
+      <div class="orbit-altitude">35,786 km</div>
+      <div class="orbit-desc">GOES · DirecTV · Intelsat</div>
+    </div>
+  </div>
+
+  <!-- ORBIT ANIMATION -->
+  <div class="orbit-anim-wrap">
+    <svg id="orbitSvg" width="700" height="200" viewBox="0 0 700 200" fill="none">
+      <!-- Stars -->
+      <rect width="700" height="200" fill="transparent"/>
+      <circle cx="50" cy="30" r="1" fill="white" opacity="0.4"/>
+      <circle cx="120" cy="80" r="0.8" fill="white" opacity="0.3"/>
+      <circle cx="200" cy="15" r="1.2" fill="#00e5ff" opacity="0.5"/>
+      <circle cx="300" cy="60" r="0.7" fill="white" opacity="0.35"/>
+      <circle cx="450" cy="25" r="1" fill="white" opacity="0.4"/>
+      <circle cx="580" cy="70" r="0.9" fill="#0099ff" opacity="0.5"/>
+      <circle cx="650" cy="20" r="0.8" fill="white" opacity="0.3"/>
+      <circle cx="670" cy="100" r="1.1" fill="white" opacity="0.25"/>
+      <!-- Earth -->
+      <defs>
+        <radialGradient id="earthGrad" cx="40%" cy="35%">
+          <stop offset="0%" stop-color="#1a6ad4"/>
+          <stop offset="50%" stop-color="#0d4fa0"/>
+          <stop offset="100%" stop-color="#062060"/>
+        </radialGradient>
+        <radialGradient id="glowGrad" cx="50%" cy="50%">
+          <stop offset="60%" stop-color="transparent"/>
+          <stop offset="100%" stop-color="rgba(0,153,255,0.15)"/>
+        </radialGradient>
+        <filter id="sat-glow">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="100" cy="100" r="50" fill="url(#earthGrad)" stroke="rgba(0,153,255,0.4)" stroke-width="1.5"/>
+      <circle cx="100" cy="100" r="54" fill="url(#glowGrad)"/>
+      <!-- Cloud details -->
+      <ellipse cx="85" cy="75" rx="12" ry="5" fill="rgba(255,255,255,0.08)" transform="rotate(-20 85 75)"/>
+      <ellipse cx="118" cy="110" rx="10" ry="4" fill="rgba(255,255,255,0.06)" transform="rotate(15 118 110)"/>
+      <!-- Orbit arc - dynamic -->
+      <ellipse id="orbitArc" cx="100" cy="100" rx="160" ry="25" stroke="rgba(0,229,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,4"/>
+      <!-- Satellite group - orbiting -->
+      <g id="animSat" filter="url(#sat-glow)">
+        <rect x="-10" y="-3.5" width="20" height="7" rx="1.5" fill="rgba(0,153,255,0.6)" stroke="#0099ff" stroke-width="1"/>
+        <rect x="-18" y="-8" width="8" height="16" rx="1" fill="rgba(0,229,255,0.5)" stroke="#00e5ff" stroke-width="0.8"/>
+        <rect x="10" y="-8" width="8" height="16" rx="1" fill="rgba(0,229,255,0.5)" stroke="#00e5ff" stroke-width="0.8"/>
+        <circle cx="0" cy="0" r="2" fill="#00e5ff"/>
+        <!-- Signal lines -->
+        <line x1="0" y1="0" x2="0" y2="20" stroke="rgba(0,229,255,0.3)" stroke-width="0.7" stroke-dasharray="2,2"/>
+      </g>
+      <!-- Labels -->
+      <text x="100" y="175" text-anchor="middle" fill="#7ab0d8" font-size="9" font-family="Orbitron,sans-serif">EARTH</text>
+      <text id="orbitLabel" x="265" y="95" fill="rgba(0,229,255,0.7)" font-size="8.5" font-family="Orbitron,sans-serif">LEO · 500 km</text>
+      <!-- Link budget beam -->
+      <line id="linkBeam" x1="100" y1="100" x2="260" y2="75" stroke="rgba(0,255,136,0.2)" stroke-width="1" stroke-dasharray="3,3"/>
+      <!-- Ground station -->
+      <polygon points="100,155 95,165 105,165" fill="rgba(0,229,255,0.5)" stroke="#00e5ff" stroke-width="1"/>
+      <rect x="98" y="153" width="4" height="4" fill="#0099ff"/>
+      <line x1="100" y1="153" x2="100" y2="148" stroke="#0099ff" stroke-width="0.8"/>
+    </svg>
+  </div>
+
+  <!-- INPUT PANELS -->
+  <div class="section-title">⬡ Link Budget Parameters</div>
+  <div class="main-grid">
+    <!-- LEFT: TRANSMITTER -->
+    <div class="panel">
+      <div class="section-title" style="font-size:11px; margin-bottom:18px;">
+        📡 Transmitter
+      </div>
+
+      <!-- Transmit Power -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Transmit Power (P<sub>t</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">RF output power of the transmitter amplifier</span>
+            </span>
+          </span>
+          <span class="form-label-unit">Watts</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-pt" min="0.1" max="100" step="0.1" value="10" oninput="syncInput('pt','sl-pt','in-pt')" />
+          <input type="number" id="in-pt" class="range-number" min="0.1" max="100" step="0.1" value="10" oninput="syncSlider('pt','in-pt','sl-pt')" />
+        </div>
+      </div>
+
+      <!-- Tx Antenna Gain -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Tx Antenna Gain (G<sub>t</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Transmit antenna directional gain in dBi</span>
+            </span>
+          </span>
+          <span class="form-label-unit">dBi</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-gt" min="0" max="50" step="0.1" value="6" oninput="syncInput('gt','sl-gt','in-gt')" />
+          <input type="number" id="in-gt" class="range-number" min="0" max="50" step="0.1" value="6" oninput="syncSlider('gt','in-gt','sl-gt')" />
+        </div>
+      </div>
+
+      <!-- Cable Loss -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Cable / Feed Losses (L<sub>l</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Transmission line and connector losses</span>
+            </span>
+          </span>
+          <span class="form-label-unit">dB</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-ll" min="0" max="5" step="0.05" value="1" oninput="syncInput('ll','sl-ll','in-ll')" />
+          <input type="number" id="in-ll" class="range-number" min="0" max="5" step="0.05" value="1" oninput="syncSlider('ll','in-ll','sl-ll')" />
+        </div>
+      </div>
+
+      <!-- Frequency -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Frequency Band</span>
+        </div>
+        <select id="sel-freq" onchange="onFreqChange()">
+          <option value="0.145" data-band="VHF"  data-name="VHF 145 MHz">VHF — 145 MHz (ISS/Amateur)</option>
+          <option value="0.4"   data-band="UHF"  data-name="UHF 400 MHz">UHF — 400 MHz</option>
+          <option value="1.5"   data-band="L"    data-name="L-Band 1.5 GHz">L-Band — 1.5 GHz (GPS, Iridium)</option>
+          <option value="2.4"   data-band="S"    data-name="S-Band 2.4 GHz" selected>S-Band — 2.4 GHz (NOAA HRPT)</option>
+          <option value="8.0"   data-band="X"    data-name="X-Band 8 GHz">X-Band — 8 GHz (Earth Obs)</option>
+          <option value="12.0"  data-band="Ku"   data-name="Ku-Band 12 GHz">Ku-Band — 12 GHz (Direct-to-Home)</option>
+          <option value="26.0"  data-band="Ka"   data-name="Ka-Band 26 GHz">Ka-Band — 26 GHz (VSAT)</option>
+        </select>
+      </div>
+
+      <!-- EIRP Display -->
+      <div class="eirp-display">
+        <div class="eirp-label">EIRP</div>
+        <div class="eirp-value" id="eirp-val">—</div>
+        <div class="eirp-unit">dBW</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RECEIVER / PATH -->
+    <div class="panel">
+      <div class="section-title" style="font-size:11px; margin-bottom:18px;">
+        🌐 Receiver / Path
+      </div>
+
+      <!-- Distance -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Slant Range / Distance
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Distance from satellite to ground station. Approximated from orbit altitude for overhead pass.</span>
+            </span>
+          </span>
+          <span class="form-label-unit">km</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-dist" min="100" max="42000" step="100" value="500" oninput="syncInput('dist','sl-dist','in-dist')" />
+          <input type="number" id="in-dist" class="range-number" min="100" max="42000" step="100" value="500" style="width:86px" oninput="syncSlider('dist','in-dist','sl-dist')" />
+        </div>
+      </div>
+
+      <!-- Rx Antenna Gain -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Rx Antenna Gain (G<sub>r</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Receive antenna directional gain in dBi</span>
+            </span>
+          </span>
+          <span class="form-label-unit">dBi</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-gr" min="0" max="50" step="0.1" value="10" oninput="syncInput('gr','sl-gr','in-gr')" />
+          <input type="number" id="in-gr" class="range-number" min="0" max="50" step="0.1" value="10" oninput="syncSlider('gr','in-gr','sl-gr')" />
+        </div>
+      </div>
+
+      <!-- System Noise Temp -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>System Noise Temp (T<sub>sys</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Total system noise temperature including antenna, LNA, and receiver</span>
+            </span>
+          </span>
+          <span class="form-label-unit">Kelvin</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-tsys" min="50" max="1000" step="10" value="150" oninput="syncInput('tsys','sl-tsys','in-tsys')" />
+          <input type="number" id="in-tsys" class="range-number" min="50" max="1000" step="10" value="150" oninput="syncSlider('tsys','in-tsys','sl-tsys')" />
+        </div>
+      </div>
+
+      <!-- Bandwidth -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Noise Bandwidth (B<sub>n</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Receiver noise bandwidth (pre-detection filter BW)</span>
+            </span>
+          </span>
+          <span class="form-label-unit">kHz</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-bw" min="1" max="100000" step="100" value="25000" oninput="syncInput('bw','sl-bw','in-bw')" />
+          <input type="number" id="in-bw" class="range-number" min="1" max="100000" step="100" value="25000" style="width:86px" oninput="syncSlider('bw','in-bw','sl-bw')" />
+        </div>
+      </div>
+
+      <!-- Required SNR -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Required SNR / Eb/N₀
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Minimum SNR needed for the required data quality (demodulation threshold)</span>
+            </span>
+          </span>
+          <span class="form-label-unit">dB</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-reqsnr" min="0" max="30" step="0.1" value="10" oninput="syncInput('reqsnr','sl-reqsnr','in-reqsnr')" />
+          <input type="number" id="in-reqsnr" class="range-number" min="0" max="30" step="0.1" value="10" oninput="syncSlider('reqsnr','in-reqsnr','sl-reqsnr')" />
+        </div>
+      </div>
+
+      <!-- Atmospheric Loss -->
+      <div class="form-group">
+        <div class="form-label">
+          <span>Atmospheric Losses (L<sub>a</sub>)
+            <span class="tooltip-wrap"><span class="tooltip-icon">i</span>
+              <span class="tooltip-text">Rain fade, gaseous absorption, scintillation</span>
+            </span>
+          </span>
+          <span class="form-label-unit">dB</span>
+        </div>
+        <div class="range-row">
+          <input type="range" id="sl-la" min="0" max="10" step="0.1" value="0.5" oninput="syncInput('la','sl-la','in-la')" />
+          <input type="number" id="in-la" class="range-number" min="0" max="10" step="0.1" value="0.5" oninput="syncSlider('la','in-la','sl-la')" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE EQUATION -->
+  <div class="panel panel-full" style="margin-bottom:24px;">
+    <div class="section-title" style="font-size:11px;">⬡ Live Equations</div>
+    <div class="equation-wrap" id="liveEq">
+      Calculating...
+    </div>
+  </div>
+
+  <!-- LINK MARGIN DISPLAY -->
+  <div class="link-margin-section" id="lmSection">
+    <div class="section-title" style="text-align:left; margin-bottom:20px;">⬡ Link Margin Analysis</div>
+    <div class="lm-section-grid">
+      <!-- Left stats -->
+      <div class="lm-stats-col">
+        <div class="lm-stat-item">
+          <div class="lm-stat-label">Received Power</div>
+          <div class="lm-stat-value" id="lm-pr">—<span class="lm-stat-unit"> dBW</span></div>
+        </div>
+        <div class="lm-stat-item">
+          <div class="lm-stat-label">Noise Floor</div>
+          <div class="lm-stat-value" id="lm-noise">—<span class="lm-stat-unit"> dBW</span></div>
+        </div>
+        <div class="lm-stat-item">
+          <div class="lm-stat-label">Free Space Path Loss</div>
+          <div class="lm-stat-value" id="lm-fspl">—<span class="lm-stat-unit"> dB</span></div>
+        </div>
+      </div>
+
+      <!-- Center: gauge + badge -->
+      <div class="lm-gauge-wrap">
+        <canvas id="gaugeCanvas" width="200" height="120"></canvas>
+        <div class="lm-badge pass" id="lmBadge">
+          <span class="lm-badge-icon">✓</span>
+          <span id="lmBadgeText">LINK PASS</span>
+        </div>
+        <div class="lm-value-big pass" id="lmValueBig">+0.0</div>
+        <div class="lm-value-unit">dB margin</div>
+        <div class="margin-bar-wrap">
+          <div class="margin-bar-labels">
+            <span>-20 dB</span><span>0</span><span>+30 dB</span>
+          </div>
+          <div class="margin-bar-track">
+            <div class="margin-bar-fill pass" id="marginBarFill" style="width:50%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right stats -->
+      <div class="lm-stats-col">
+        <div class="lm-stat-item" style="text-align:right;">
+          <div class="lm-stat-label">Achieved SNR</div>
+          <div class="lm-stat-value" id="lm-snr">—<span class="lm-stat-unit"> dB</span></div>
+        </div>
+        <div class="lm-stat-item" style="text-align:right;">
+          <div class="lm-stat-label">Required SNR</div>
+          <div class="lm-stat-value" id="lm-reqsnr">—<span class="lm-stat-unit"> dB</span></div>
+        </div>
+        <div class="lm-stat-item" style="text-align:right;">
+          <div class="lm-stat-label">Figure of Merit G/T</div>
+          <div class="lm-stat-value" id="lm-gt">—<span class="lm-stat-unit"> dB/K</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUDGET TABLE -->
+  <div class="panel panel-full" style="margin-bottom:24px;">
+    <div class="section-title" style="font-size:11px;">⬡ Link Budget Report</div>
+    <div class="budget-table-wrap">
+      <table class="budget-table" id="budgetTable">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Symbol</th>
+            <th>Value</th>
+            <th>Unit</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="budgetTbody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-title">⬡ Analysis Charts</div>
+  <div class="charts-grid">
+    <div class="chart-panel">
+      <div class="chart-title">SNR vs Distance</div>
+      <div class="chart-wrap"><canvas id="chartSNR"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">FSPL vs Frequency</div>
+      <div class="chart-wrap"><canvas id="chartFSPL"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">Link Margin vs Elevation</div>
+      <div class="chart-wrap"><canvas id="chartElev"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ANTENNA PATTERN + FREQ INFO -->
+  <div class="main-grid" style="margin-bottom:24px;">
+    <div class="antenna-canvas-wrap">
+      <div class="section-title" style="font-size:11px;">⬡ Antenna Gain Pattern (Polar)</div>
+      <canvas id="antennaCanvas" width="320" height="280" style="display:block;margin:0 auto;"></canvas>
+    </div>
+    <div class="freq-info-panel">
+      <div class="section-title" style="font-size:11px;">⬡ Frequency Band Information</div>
+      <div class="freq-info-grid">
+        <div class="freq-info-item">
+          <label>Band</label>
+          <span id="fi-band">S-Band</span>
+        </div>
+        <div class="freq-info-item">
+          <label>Frequency</label>
+          <span id="fi-freq">2.4 GHz</span>
+        </div>
+        <div class="freq-info-item">
+          <label>Wavelength</label>
+          <span id="fi-lambda">12.5 cm</span>
+        </div>
+        <div class="freq-info-item">
+          <label>Atm. Effect</label>
+          <span id="fi-atm">Low</span>
+        </div>
+      </div>
+      <div class="freq-applications" id="fi-apps">
+        S-Band is widely used in weather satellite downlinks (NOAA HRPT), space communication, and airport surveillance radar. Good penetration through rain with moderate atmospheric losses. Supports moderate data rates.
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="section-title">⬡ Export</div>
+  <div class="export-row" style="margin-bottom:40px;">
+    <button class="btn btn-blue" onclick="exportCSV()">
+      <span>⬇</span> Export CSV
+    </button>
+    <button class="btn btn-cyan" onclick="exportText()">
+      <span>⬇</span> Export Report (.txt)
+    </button>
+    <button class="btn btn-blue" onclick="window.print()">
+      <span>🖨</span> Print Report
+    </button>
+  </div>
+
+</div><!-- end app-wrapper -->
+
+<script>
+/* ================================================================
+   STATE
+================================================================ */
+const state = {
+  pt:     10,     // W
+  gt:     6,      // dBi
+  ll:     1,      // dB
+  freq:   2.4,    // GHz
+  dist:   500,    // km
+  gr:     10,     // dBi
+  tsys:   150,    // K
+  bw:     25000,  // kHz
+  reqsnr: 10,     // dB
+  la:     0.5,    // dB
+  orbit:  'leo',
+  scenario: 'Custom',
+};
+
+const results = {};
+
+/* ================================================================
+   CONSTANTS
+================================================================ */
+const k_dB  = -228.6; // 10*log10(Boltzmann) dBW/K/Hz
+
+/* ================================================================
+   STARFIELD
+================================================================ */
+(function buildStarfield() {
+  const sf = document.getElementById('starfield');
+  const n = 220;
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    const sz = Math.random() * 2.2 + 0.4;
+    const dur = (Math.random() * 4 + 1.5).toFixed(2);
+    const delay = (Math.random() * 5).toFixed(2);
+    const minOp = (Math.random() * 0.1 + 0.05).toFixed(2);
+    const maxOp = (Math.random() * 0.6 + 0.3).toFixed(2);
+    const col = Math.random() > 0.85 ? '#00e5ff' : Math.random() > 0.7 ? '#0099ff' : '#ffffff';
+    s.style.cssText = `
+      left:${x}%; top:${y}%;
+      width:${sz}px; height:${sz}px;
+      background:${col};
+      --dur:${dur}s; --delay:${delay}s; --min-op:${minOp}; --max-op:${maxOp};
+    `;
+    sf.appendChild(s);
+  }
+})();
+
+/* ================================================================
+   RANGE SYNC
+================================================================ */
+function syncInput(key, sliderId, numId) {
+  const v = parseFloat(document.getElementById(sliderId).value);
+  document.getElementById(numId).value = v;
+  state[key] = v;
+  updateRangeGradient(document.getElementById(sliderId));
+  calculate();
+}
+function syncSlider(key, numId, sliderId) {
+  const v = parseFloat(document.getElementById(numId).value) || 0;
+  const sl = document.getElementById(sliderId);
+  sl.value = Math.min(Math.max(v, parseFloat(sl.min)), parseFloat(sl.max));
+  state[key] = v;
+  updateRangeGradient(sl);
+  calculate();
+}
+function updateRangeGradient(el) {
+  const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
+  const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+  el.style.setProperty('--pct', pct);
+}
+function initRanges() {
+  document.querySelectorAll('input[type="range"]').forEach(updateRangeGradient);
+}
+
+function onFreqChange() {
+  const sel = document.getElementById('sel-freq');
+  state.freq = parseFloat(sel.value);
+  state.scenario = 'Custom';
+  updateFreqInfo();
+  calculate();
+}
+
+/* ================================================================
+   ORBIT SELECTION
+================================================================ */
+function selectOrbit(type) {
+  state.orbit = type;
+  ['leo','meo','geo'].forEach(o => document.getElementById('orbit-'+o).classList.remove('selected'));
+  document.getElementById('orbit-'+type).classList.add('selected');
+  const defaults = { leo: 500, meo: 20200, geo: 35786 };
+  const d = defaults[type];
+  document.getElementById('sl-dist').value = d;
+  document.getElementById('in-dist').value = d;
+  state.dist = d;
+  updateRangeGradient(document.getElementById('sl-dist'));
+  updateOrbitAnim();
+  document.getElementById('sb-orbit').textContent = type.toUpperCase();
+  calculate();
+}
+
+function updateOrbitAnim() {
+  const orbitArc = document.getElementById('orbitArc');
+  const sat = document.getElementById('animSat');
+  const label = document.getElementById('orbitLabel');
+  const beam = document.getElementById('linkBeam');
+  // Scale orbit arc based on type
+  const arcs = { leo: [160,25], meo: [230,38], geo: [290,48] };
+  const dur = { leo: 3, meo: 7, geo: 14 };
+  const labels = { leo: 'LEO · ' + state.dist + ' km', meo: 'MEO · ' + state.dist + ' km', geo: 'GEO · ' + state.dist + ' km' };
+  const [rx, ry] = arcs[state.orbit];
+  orbitArc.setAttribute('rx', rx);
+  orbitArc.setAttribute('ry', ry);
+  label.textContent = labels[state.orbit];
+  // Reposition label
+  label.setAttribute('x', 100 + rx - 20);
+  label.setAttribute('y', 100 - ry - 8);
+  // Animate satellite
+  sat.innerHTML = `
+    <animateMotion dur="${dur[state.orbit]}s" repeatCount="indefinite">
+      <mpath href="#orbitArc"/>
+    </animateMotion>
+    <rect x="-10" y="-3.5" width="20" height="7" rx="1.5" fill="rgba(0,153,255,0.6)" stroke="#0099ff" stroke-width="1"/>
+    <rect x="-18" y="-8" width="8" height="16" rx="1" fill="rgba(0,229,255,0.5)" stroke="#00e5ff" stroke-width="0.8"/>
+    <rect x="10" y="-8" width="8" height="16" rx="1" fill="rgba(0,229,255,0.5)" stroke="#00e5ff" stroke-width="0.8"/>
+    <circle cx="0" cy="0" r="2" fill="#00e5ff"/>
+  `;
+}
+
+/* ================================================================
+   PRESET SCENARIOS
+================================================================ */
+const presets = {
+  iss: {
+    name:'ISS / ARISS', pt:5, gt:2, ll:1, freq:0.145, dist:420, gr:3, tsys:300, bw:15, reqsnr:8, la:0.2, orbit:'leo',
+    freqIdx: 0
+  },
+  gps: {
+    name:'GPS L1', pt:67, gt:13, ll:0.5, freq:1.5, dist:20200, gr:0, tsys:200, bw:1000, reqsnr:6, la:0.5, orbit:'meo',
+    freqIdx: 2
+  },
+  noaa: {
+    name:'NOAA Weather', pt:5, gt:4, ll:0.5, freq:0.4, dist:850, gr:2, tsys:250, bw:34, reqsnr:8, la:0.2, orbit:'leo',
+    freqIdx: 1
+  },
+  iridium: {
+    name:'Iridium SBD', pt:0.5, gt:0, ll:0.3, freq:1.5, dist:780, gr:0, tsys:500, bw:25, reqsnr:7, la:0.3, orbit:'leo',
+    freqIdx: 2
+  },
+};
+
+function loadPreset(key) {
+  const p = presets[key];
+  Object.assign(state, p);
+  state.scenario = p.name;
+
+  const fields = ['pt','gt','ll','dist','gr','tsys','bw','reqsnr','la'];
+  fields.forEach(f => {
+    const sl = document.getElementById('sl-'+f);
+    const inp = document.getElementById('in-'+f);
+    if (sl) { sl.value = state[f]; updateRangeGradient(sl); }
+    if (inp) inp.value = state[f];
+  });
+
+  // Set frequency
+  const sel = document.getElementById('sel-freq');
+  sel.selectedIndex = p.freqIdx;
+  state.freq = parseFloat(sel.value);
+
+  selectOrbit(p.orbit);
+  updateFreqInfo();
+  calculate();
+}
+
+/* ================================================================
+   CALCULATION ENGINE
+================================================================ */
+function calculate() {
+  const { pt, gt, ll, freq, dist, gr, tsys, bw, reqsnr, la } = state;
+  const freqHz = freq * 1e9;
+  const distM  = dist * 1e3;
+  const bwHz   = bw * 1e3;
+  const c = 3e8;
+
+  // EIRP
+  const pt_dBW = 10 * Math.log10(pt);
+  const eirp   = pt_dBW + gt - ll;
+
+  // FSPL
+  const fspl = 20*Math.log10(distM) + 20*Math.log10(freqHz) + 20*Math.log10(4*Math.PI/c);
+
+  // Received power
+  const pr = eirp + gr - fspl - la;
+
+  // Noise power N = kTB
+  const noise = k_dB + 10*Math.log10(tsys) + 10*Math.log10(bwHz);
+
+  // SNR
+  const snr = pr - noise;
+
+  // Link margin
+  const margin = snr - reqsnr;
+
+  // G/T
+  const gt_ratio = gr - 10*Math.log10(tsys);
+
+  // Wavelength
+  const lambda = c / freqHz;
+
+  // Store
+  Object.assign(results, { pt_dBW, eirp, fspl, pr, noise, snr, margin, gt_ratio, lambda, freqHz, distM, bwHz });
+
+  // Update UI
+  updateEIRP(eirp);
+  updateLinkMargin(margin, snr, pr, noise, fspl, gt_ratio, reqsnr);
+  updateStatusBar(eirp, fspl, snr, margin);
+  updateBudgetTable(pt, pt_dBW, gt, ll, eirp, fspl, gr, la, pr, noise, snr, reqsnr, margin, gt_ratio);
+  updateLiveEquation(pt, pt_dBW, gt, ll, eirp, dist, freq, fspl, pr, noise, snr, reqsnr, margin, tsys, bw, la);
+  updateCharts();
+  updateAntennaPattern();
+}
+
+function fmt(v, d=2) { return (v >= 0 ? '+' : '') + v.toFixed(d); }
+function fmtN(v, d=2) { return v.toFixed(d); }
+
+/* ================================================================
+   EIRP
+================================================================ */
+function updateEIRP(eirp) {
+  document.getElementById('eirp-val').textContent = fmt(eirp);
+}
+
+/* ================================================================
+   LINK MARGIN UI
+================================================================ */
+function updateLinkMargin(margin, snr, pr, noise, fspl, gt_ratio, reqsnr) {
+  const pass = margin >= 0;
+  const badge = document.getElementById('lmBadge');
+  const bigVal = document.getElementById('lmValueBig');
+  const fill = document.getElementById('marginBarFill');
+
+  badge.className = 'lm-badge ' + (pass ? 'pass' : 'fail');
+  badge.querySelector('.lm-badge-icon').textContent = pass ? '✓' : '✗';
+  document.getElementById('lmBadgeText').textContent = pass ? 'LINK PASS' : 'LINK FAIL';
+
+  bigVal.className = 'lm-value-big ' + (pass ? 'pass' : 'fail');
+  bigVal.textContent = fmt(margin);
+
+  // Bar: map -20..+30 → 0..100%
+  const pct = Math.min(100, Math.max(0, ((margin + 20) / 50) * 100));
+  fill.style.width = pct.toFixed(1) + '%';
+  fill.className = 'margin-bar-fill ' + (pass ? 'pass' : 'fail');
+
+  document.getElementById('lm-pr').innerHTML    = `${fmt(pr)}<span class="lm-stat-unit"> dBW</span>`;
+  document.getElementById('lm-noise').innerHTML = `${fmt(noise)}<span class="lm-stat-unit"> dBW</span>`;
+  document.getElementById('lm-fspl').innerHTML  = `${fmtN(fspl)}<span class="lm-stat-unit"> dB</span>`;
+  document.getElementById('lm-snr').innerHTML   = `${fmt(snr)}<span class="lm-stat-unit"> dB</span>`;
+  document.getElementById('lm-reqsnr').innerHTML = `${fmtN(reqsnr)}<span class="lm-stat-unit"> dB</span>`;
+  document.getElementById('lm-gt').innerHTML    = `${fmt(gt_ratio)}<span class="lm-stat-unit"> dB/K</span>`;
+
+  drawGauge(margin);
+}
+
+/* ================================================================
+   GAUGE
+================================================================ */
+function drawGauge(margin) {
+  const canvas = document.getElementById('gaugeCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w/2, cy = h - 10, r = 80;
+  const startAngle = Math.PI;
+  const endAngle   = 0;
+  const total = endAngle - startAngle;
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, 0);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 14;
+  ctx.stroke();
+
+  // Colored arc segments
+  const segments = [
+    { from: -20, to: 0,  color: '#ff3355' },
+    { from: 0,   to: 10, color: '#ffd700' },
+    { from: 10,  to: 30, color: '#00ff88' },
+  ];
+  segments.forEach(seg => {
+    const sa = Math.PI + ((seg.from + 20) / 50) * Math.PI;
+    const ea = Math.PI + ((seg.to   + 20) / 50) * Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, sa, ea);
+    ctx.strokeStyle = seg.color + '50';
+    ctx.lineWidth = 14;
+    ctx.stroke();
+  });
+
+  // Needle
+  const clamped = Math.min(30, Math.max(-20, margin));
+  const needleAngle = Math.PI + ((clamped + 20) / 50) * Math.PI;
+  const nx = cx + r * Math.cos(needleAngle);
+  const ny = cy + r * Math.sin(needleAngle);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(nx, ny);
+  ctx.strokeStyle = margin >= 0 ? '#00ff88' : '#ff3355';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = margin >= 0 ? '#00ff88' : '#ff3355';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI*2);
+  ctx.fillStyle = '#0099ff';
+  ctx.fill();
+
+  // Tick labels
+  ctx.font = '8px JetBrains Mono, monospace';
+  ctx.fillStyle = 'rgba(192,216,255,0.5)';
+  ctx.textAlign = 'center';
+  [[-20,'−20'], [0,'0'], [10,'10'], [30,'+30']].forEach(([v, lbl]) => {
+    const a = Math.PI + ((v + 20) / 50) * Math.PI;
+    const lx = cx + (r + 14) * Math.cos(a);
+    const ly = cy + (r + 14) * Math.sin(a);
+    ctx.fillText(lbl, lx, ly + 3);
+  });
+
+  // dB label
+  ctx.fillStyle = 'rgba(0,229,255,0.4)';
+  ctx.font = '9px Orbitron, sans-serif';
+  ctx.fillText('dB', cx, cy - r*0.3);
+}
+
+/* ================================================================
+   STATUS BAR
+================================================================ */
+function updateStatusBar(eirp, fspl, snr, margin) {
+  document.getElementById('sb-scenario').textContent = state.scenario;
+  document.getElementById('sb-eirp').textContent = fmt(eirp) + ' dBW';
+  document.getElementById('sb-fspl').textContent = fmtN(fspl) + ' dB';
+  document.getElementById('sb-snr').textContent  = fmt(snr) + ' dB';
+  const mEl = document.getElementById('sb-margin');
+  mEl.textContent = (margin >= 0 ? '+' : '') + margin.toFixed(1) + ' dB';
+  mEl.className = 'status-' + (margin >= 0 ? 'pass' : 'fail');
+  const sel = document.getElementById('sel-freq');
+  document.getElementById('sb-band').textContent = sel.options[sel.selectedIndex].dataset.band + '-Band';
+}
+
+/* ================================================================
+   BUDGET TABLE
+================================================================ */
+function updateBudgetTable(pt, pt_dBW, gt, ll, eirp, fspl, gr, la, pr, noise, snr, reqsnr, margin, gt_ratio) {
+  const tbody = document.getElementById('budgetTbody');
+  const pass = margin >= 0;
+  const rows = [
+    { sec: true, label: 'TRANSMITTER' },
+    { label: 'Transmit Power',           sym: 'Pₜ',       val: fmtN(pt_dBW),      unit: 'dBW',    note: `${pt.toFixed(2)} W` },
+    { label: 'Transmit Antenna Gain',    sym: 'Gₜ',       val: '+' + fmtN(gt),    unit: 'dBi',    note: 'Transmit gain' },
+    { label: 'Feed / Cable Loss',        sym: '−Lₗ',      val: '−' + fmtN(ll),    unit: 'dB',     note: 'Line losses' },
+    { label: 'Effective Isotropic Radiated Power', sym: 'EIRP', val: fmt(eirp), unit: 'dBW', note: 'Pₜ + Gₜ − Lₗ', bold: true },
+    { sec: true, label: 'PROPAGATION PATH' },
+    { label: 'Free Space Path Loss',     sym: 'FSPL',      val: '−' + fmtN(fspl), unit: 'dB',    note: `@ ${state.dist} km, ${state.freq} GHz` },
+    { label: 'Atmospheric Losses',       sym: '−Lₐ',      val: '−' + fmtN(la),   unit: 'dB',    note: 'Rain, gas, scintillation' },
+    { sec: true, label: 'RECEIVER' },
+    { label: 'Receive Antenna Gain',     sym: 'Gᵣ',       val: '+' + fmtN(gr),   unit: 'dBi',   note: 'Receive gain' },
+    { label: 'Received Signal Power',    sym: 'Pᵣ',       val: fmt(pr),          unit: 'dBW',   note: 'EIRP − FSPL − Lₐ + Gᵣ', bold: true },
+    { sec: true, label: 'LINK QUALITY' },
+    { label: 'System Noise Temperature', sym: 'Tₛ',       val: fmtN(state.tsys,0), unit: 'K',   note: 'Including antenna + LNA' },
+    { label: 'Noise Bandwidth',          sym: 'Bₙ',       val: fmtN(state.bw,0), unit: 'kHz',  note: `${(state.bw/1000).toFixed(1)} MHz` },
+    { label: 'Thermal Noise Floor',      sym: 'N = kTB',  val: fmt(noise),       unit: 'dBW',  note: 'Johnson-Nyquist noise' },
+    { label: 'Signal-to-Noise Ratio',    sym: 'SNR',      val: fmt(snr),         unit: 'dB',   note: 'Pᵣ − N', bold: true },
+    { label: 'Required SNR / Eb/N₀',    sym: 'SNRᵣₑq',   val: fmtN(reqsnr),     unit: 'dB',   note: 'Demod threshold' },
+    { label: 'Receiver Figure of Merit', sym: 'G/T',      val: fmt(gt_ratio),    unit: 'dB/K', note: 'Gᵣ − 10·log(Tₛ)' },
+    { label: 'LINK MARGIN',              sym: 'LM',       val: fmt(margin),      unit: 'dB',   note: 'SNR − SNRᵣₑq', bold: true, margin: true, pass },
+  ];
+
+  tbody.innerHTML = rows.map(r => {
+    if (r.sec) {
+      return `<tr><td colspan="5" class="td-section">${r.label}</td></tr>`;
+    }
+    const rowClass = r.margin ? (r.pass ? 'row-margin-pass' : 'row-margin-fail') : '';
+    const valClass = 'td-value' + (r.bold ? ' td-bold' : '');
+    return `<tr class="${rowClass}">
+      <td>${r.label}</td>
+      <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:11px;">${r.sym}</td>
+      <td class="${valClass}">${r.val}</td>
+      <td class="td-unit">${r.unit}</td>
+      <td style="font-size:11px;color:var(--text-muted);">${r.note}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ================================================================
+   LIVE EQUATION
+================================================================ */
+function updateLiveEquation(pt, pt_dBW, gt, ll, eirp, dist, freq, fspl, pr, noise, snr, reqsnr, margin, tsys, bw, la) {
+  const h = (s, v) => `<span class="eq-highlight">${s}</span>`;
+  const r = (v) => `<span class="eq-result">${v}</span>`;
+  const l = (s) => `<span class="eq-label">${s}</span>`;
+  const eq = document.getElementById('liveEq');
+  eq.innerHTML = `
+${l('EIRP')}  = 10·log₁₀(Pₜ) + Gₜ − Lₗ
+      = 10·log₁₀(${h(pt)} W) + ${h(gt)} dBi − ${h(ll)} dB
+      = ${h(pt_dBW.toFixed(2))} + ${h(gt)} − ${h(ll)} = ${r(fmt(eirp))} dBW
+
+${l('FSPL')}  = 20·log₁₀(d) + 20·log₁₀(f) + 20·log₁₀(4π/c)
+      = 20·log₁₀(${h(dist+'×10³')} m) + 20·log₁₀(${h(freq+'×10⁹')} Hz) + 20·log₁₀(4π/3×10⁸)
+      = ${r(fmtN(fspl,2))} dB
+
+${l('Pᵣ')}   = EIRP + Gᵣ − FSPL − Lₐ
+      = ${h(fmt(eirp))} + ${h(gt)} − ${h(fmtN(fspl,2))} − ${h(la)} = ${r(fmt(pr,2))} dBW
+
+${l('N')}     = k + 10·log₁₀(Tₛ) + 10·log₁₀(Bₙ)
+      = −228.6 + 10·log₁₀(${h(tsys)} K) + 10·log₁₀(${h(bw+'×10³')} Hz) = ${r(fmt(noise,2))} dBW
+
+${l('SNR')}   = Pᵣ − N = ${h(fmt(pr,2))} − (${h(fmt(noise,2))}) = ${r(fmt(snr,2))} dB
+
+${l('Margin')} = SNR − SNRᵣₑq = ${h(fmt(snr,2))} − ${h(reqsnr)} = ${r(fmt(margin,2))} dB ${margin>=0 ? '<span style="color:var(--neon-green)">✓ PASS</span>' : '<span style="color:var(--neon-red)">✗ FAIL</span>'}
+  `;
+}
+
+/* ================================================================
+   CHARTS
+================================================================ */
+let chartSNR, chartFSPL, chartElev;
+
+const chartDefaults = {
+  backgroundColor: 'transparent',
+  plugins: {
+    legend: { labels: { color: 'rgba(192,216,255,0.7)', font: { family: 'JetBrains Mono', size: 10 } } },
+    tooltip: {
+      backgroundColor: '#0a1525',
+      borderColor: '#0099ff',
+      borderWidth: 1,
+      titleColor: '#00e5ff',
+      bodyColor: '#c0d8ff',
+      bodyFont: { family: 'JetBrains Mono' },
+    }
+  },
+  scales: {
+    x: {
+      ticks: { color: 'rgba(192,216,255,0.5)', font: { family: 'JetBrains Mono', size: 9 } },
+      grid:  { color: 'rgba(0,153,255,0.08)' },
+      border: { color: 'rgba(0,153,255,0.2)' }
+    },
+    y: {
+      ticks: { color: 'rgba(192,216,255,0.5)', font: { family: 'JetBrains Mono', size: 9 } },
+      grid:  { color: 'rgba(0,153,255,0.08)' },
+      border: { color: 'rgba(0,153,255,0.2)' }
+    }
+  }
+};
+
+function initCharts() {
+  // SNR vs Distance
+  chartSNR = new Chart(document.getElementById('chartSNR'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'SNR (dB)', data: [], borderColor: '#00e5ff', backgroundColor: 'rgba(0,229,255,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+      { label: 'Required SNR', data: [], borderColor: '#ff3355', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0 },
+      { label: 'Current', data: [], borderColor: '#ffd700', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 6, pointBackgroundColor: '#ffd700', showLine: false }
+    ]},
+    options: { ...chartDefaults, animation: false, responsive: true, maintainAspectRatio: false }
+  });
+
+  // FSPL vs Frequency
+  chartFSPL = new Chart(document.getElementById('chartFSPL'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'FSPL (dB)', data: [], borderColor: '#0099ff', backgroundColor: 'rgba(0,153,255,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true },
+      { label: 'Current', data: [], borderColor: '#ffd700', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 6, pointBackgroundColor: '#ffd700', showLine: false }
+    ]},
+    options: { ...chartDefaults, animation: false, responsive: true, maintainAspectRatio: false }
+  });
+
+  // Link Margin vs Elevation
+  chartElev = new Chart(document.getElementById('chartElev'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Link Margin (dB)', data: [], borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.05)', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true },
+      { label: '0 dB threshold', data: [], borderColor: '#ff3355', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0 },
+    ]},
+    options: { ...chartDefaults, animation: false, responsive: true, maintainAspectRatio: false }
+  });
+}
+
+function updateCharts() {
+  const { eirp, fspl, pr, noise, snr, freqHz, distM } = results;
+  const { freq, dist, gr, la, reqsnr, tsys, bw, orbit } = state;
+  const c = 3e8;
+
+  // — SNR vs Distance —
+  const dists = [];
+  const snrs  = [];
+  const maxD  = orbit === 'geo' ? 50000 : orbit === 'meo' ? 25000 : 2000;
+  const steps = 40;
+  for (let i = 1; i <= steps; i++) {
+    const d = (maxD / steps) * i;
+    const dM = d * 1e3;
+    const fsp = 20*Math.log10(dM) + 20*Math.log10(freq*1e9) + 20*Math.log10(4*Math.PI/c);
+    const pr_ = eirp + gr - fsp - la;
+    const n_  = k_dB + 10*Math.log10(tsys) + 10*Math.log10(bw*1e3);
+    dists.push(d.toFixed(0));
+    snrs.push(parseFloat((pr_ - n_).toFixed(2)));
+  }
+  const currFsp = 20*Math.log10(dist*1e3) + 20*Math.log10(freq*1e9) + 20*Math.log10(4*Math.PI/c);
+  const currPr  = eirp + gr - currFsp - la;
+  const currN   = k_dB + 10*Math.log10(tsys) + 10*Math.log10(bw*1e3);
+  const currSNR = currPr - currN;
+  const curDIdx = Math.round((dist / maxD) * steps) - 1;
+
+  chartSNR.data.labels = dists;
+  chartSNR.data.datasets[0].data = snrs;
+  chartSNR.data.datasets[1].data = Array(steps).fill(reqsnr);
+  chartSNR.data.datasets[2].data = Array(steps).fill(null).map((_, i) => i === Math.max(0,Math.min(steps-1,curDIdx)) ? parseFloat(currSNR.toFixed(2)) : null);
+  chartSNR.update();
+
+  // — FSPL vs Frequency —
+  const freqs = [0.1, 0.145, 0.4, 0.8, 1.5, 2.4, 5, 8, 12, 18, 26, 40];
+  const fspls = freqs.map(f => {
+    return parseFloat((20*Math.log10(dist*1e3) + 20*Math.log10(f*1e9) + 20*Math.log10(4*Math.PI/c)).toFixed(2));
+  });
+  const curFspl = parseFloat((20*Math.log10(dist*1e3) + 20*Math.log10(freq*1e9) + 20*Math.log10(4*Math.PI/c)).toFixed(2));
+  const curFIdx = freqs.findIndex(f => Math.abs(f - freq) < 0.1) ?? 0;
+
+  chartFSPL.data.labels = freqs.map(f => f < 1 ? (f*1000).toFixed(0)+'M' : f+'G');
+  chartFSPL.data.datasets[0].data = fspls;
+  chartFSPL.data.datasets[1].data = freqs.map((_, i) => i === curFIdx ? curFspl : null);
+  chartFSPL.update();
+
+  // — Margin vs Elevation —
+  const altKm  = dist;
+  const earthR = 6371;
+  const elevs  = [];
+  const margins= [];
+  for (let el = 5; el <= 90; el += 5) {
+    const elRad  = el * Math.PI / 180;
+    // Slant range from elevation angle and orbit altitude
+    const slant = earthR * (Math.sqrt(((altKm + earthR)/earthR)**2 - Math.cos(elRad)**2) - Math.sin(elRad));
+    const fsp_ = 20*Math.log10(slant*1e3) + 20*Math.log10(freq*1e9) + 20*Math.log10(4*Math.PI/c);
+    const pr_  = eirp + gr - fsp_ - la;
+    const n_   = k_dB + 10*Math.log10(tsys) + 10*Math.log10(bw*1e3);
+    const m_   = pr_ - n_ - reqsnr;
+    elevs.push(el + '°');
+    margins.push(parseFloat(m_.toFixed(2)));
+  }
+  chartElev.data.labels = elevs;
+  chartElev.data.datasets[0].data = margins;
+  chartElev.data.datasets[1].data = Array(elevs.length).fill(0);
+  chartElev.update();
+}
+
+/* ================================================================
+   ANTENNA PATTERN
+================================================================ */
+function updateAntennaPattern() {
+  const canvas = document.getElementById('antennaCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w/2, cy = h/2 + 10, r = 110;
+  const gr_dBi = state.gr;
+
+  // Background rings
+  ctx.font = '8px JetBrains Mono';
+  for (let ring = 0.25; ring <= 1; ring += 0.25) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * ring, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,153,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(192,216,255,0.2)';
+    ctx.textAlign = 'right';
+    const dBLabel = (gr_dBi * ring - gr_dBi).toFixed(0);
+    ctx.fillText(dBLabel + ' dB', cx - ring*r - 2, cy + 3);
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(0,153,255,0.2)';
+  ctx.lineWidth = 0.7;
+  [[0,Math.PI],[Math.PI/2,3*Math.PI/2]].forEach(([a1,a2]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + r*Math.cos(a1-Math.PI/2), cy + r*Math.sin(a1-Math.PI/2));
+    ctx.lineTo(cx + r*Math.cos(a2-Math.PI/2), cy + r*Math.sin(a2-Math.PI/2));
+    ctx.stroke();
+  });
+
+  // Angle labels
+  ctx.fillStyle = 'rgba(192,216,255,0.35)';
+  ctx.font = '9px Orbitron, sans-serif';
+  ctx.textAlign = 'center';
+  [0, 45, 90, 135, 180, 225, 270, 315].forEach(deg => {
+    const a = (deg - 90) * Math.PI / 180;
+    const lx = cx + (r + 14) * Math.cos(a);
+    const ly = cy + (r + 14) * Math.sin(a);
+    ctx.fillText(deg + '°', lx, ly + 3);
+  });
+
+  // Main lobe pattern (dish antenna: sinc²-like)
+  const halfBeam = gr_dBi > 30 ? 3 : gr_dBi > 20 ? 8 : gr_dBi > 10 ? 18 : gr_dBi > 5 ? 35 : 60; // beamwidth
+  const n_pts = 360;
+  ctx.beginPath();
+  for (let i = 0; i <= n_pts; i++) {
+    const ang = (i / n_pts) * 2 * Math.PI;
+    const deg_off = ((ang * 180 / Math.PI) + 180) % 360 - 180;
+    // Pattern model: Gaussian main lobe + sidelobe
+    let gain_ratio;
+    const x_norm = deg_off / halfBeam;
+    gain_ratio = Math.exp(-2.77 * x_norm * x_norm) + 0.03 * Math.pow(Math.cos(ang * 3), 2);
+    gain_ratio = Math.min(1, Math.max(0.005, gain_ratio));
+    const rad = r * gain_ratio;
+    const px = cx + rad * Math.cos(ang - Math.PI/2);
+    const py = cy + rad * Math.sin(ang - Math.PI/2);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0,   'rgba(0,229,255,0.3)');
+  grad.addColorStop(0.5, 'rgba(0,153,255,0.15)');
+  grad.addColorStop(1,   'rgba(0,153,255,0.02)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Target direction dot (pointing straight up = 0°)
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 0.95, 5, 0, Math.PI*2);
+  ctx.fillStyle = '#ffd700';
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur = 8;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Title
+  ctx.fillStyle = 'rgba(0,229,255,0.5)';
+  ctx.font = '9px Orbitron, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gᵣ = ' + state.gr + ' dBi  |  BW ≈ ' + (2 * halfBeam).toFixed(0) + '°', cx, h - 6);
+}
+
+/* ================================================================
+   FREQUENCY INFO
+================================================================ */
+const freqInfo = {
+  '0.145': { band:'VHF', freq:'145 MHz', lambda:'206 cm', atm:'Very Low', apps:'VHF is used for ISS amateur radio (ARISS), weather balloon tracking, and basic satellite beacons. Long wavelength enables simple antenna designs. Minimal atmospheric attenuation but susceptible to RF noise.' },
+  '0.4':   { band:'UHF', freq:'400 MHz', lambda:'75 cm', atm:'Very Low', apps:'UHF serves amateur satellites (AO-73), search & rescue (COSPAS-SARSAT 406 MHz), and military communications. Good ground penetration, compact antenna size.' },
+  '1.5':   { band:'L-Band', freq:'1.5 GHz', lambda:'20 cm', atm:'Low', apps:'L-Band is used by GPS (L1: 1575.42 MHz, L2: 1227.60 MHz), Iridium satellite phones (1.625 GHz), Inmarsat maritime comms, and GLONASS. Low atmospheric attenuation, excellent worldwide coverage.' },
+  '2.4':   { band:'S-Band', freq:'2.4 GHz', lambda:'12.5 cm', atm:'Low', apps:'S-Band supports NOAA HRPT weather data (1.7 GHz), deep space network (NASA DSN), airport ASR radar, and ISS telemetry uplink. Good balance between antenna size and atmospheric performance.' },
+  '8.0':   { band:'X-Band', freq:'8 GHz', lambda:'3.75 cm', atm:'Moderate', apps:'X-Band is used for Earth observation downlinks (Sentinel, Landsat), military SATCOM, deep space probes (Voyager X-band upgrade), and weather radar. High data rates for imagery.' },
+  '12.0':  { band:'Ku-Band', freq:'12 GHz', lambda:'2.5 cm', atm:'Moderate-High', apps:'Ku-Band serves Direct-to-Home (DTH) TV broadcasting (DirecTV, Sky), VSAT broadband (HughesNet), Starlink user terminals. Subject to rain fade; dish sizes 45–90 cm typical.' },
+  '26.0':  { band:'Ka-Band', freq:'26 GHz', lambda:'1.15 cm', atm:'High', apps:'Ka-Band enables high-throughput satellites (HTS) with Gbps capacity (ViaSat-3, Jupiter-3), NASA SLS/Artemis communications, 5G backhaul. Severe rain fade requires adaptive coding/modulation.' },
+};
+
+function updateFreqInfo() {
+  const sel = document.getElementById('sel-freq');
+  const key = sel.value;
+  const info = freqInfo[key] || freqInfo['2.4'];
+  document.getElementById('fi-band').textContent  = info.band;
+  document.getElementById('fi-freq').textContent  = info.freq;
+  document.getElementById('fi-lambda').textContent = info.lambda;
+  document.getElementById('fi-atm').textContent   = info.atm;
+  document.getElementById('fi-apps').textContent  = info.apps;
+}
+
+/* ================================================================
+   EXPORT
+================================================================ */
+function exportCSV() {
+  const { pt, gt, ll, freq, dist, gr, tsys, bw, reqsnr, la } = state;
+  const { eirp, fspl, pr, noise, snr, margin } = results;
+  const rows = [
+    ['Parameter','Value','Unit'],
+    ['Transmit Power', pt, 'W'],
+    ['Tx Antenna Gain', gt, 'dBi'],
+    ['Cable Loss', ll, 'dB'],
+    ['Frequency', freq, 'GHz'],
+    ['EIRP', eirp.toFixed(2), 'dBW'],
+    ['Slant Range', dist, 'km'],
+    ['Free Space Path Loss', fspl.toFixed(2), 'dB'],
+    ['Atmospheric Loss', la, 'dB'],
+    ['Rx Antenna Gain', gr, 'dBi'],
+    ['Received Power', pr.toFixed(2), 'dBW'],
+    ['System Noise Temp', tsys, 'K'],
+    ['Noise Bandwidth', bw, 'kHz'],
+    ['Noise Floor', noise.toFixed(2), 'dBW'],
+    ['SNR', snr.toFixed(2), 'dB'],
+    ['Required SNR', reqsnr, 'dB'],
+    ['Link Margin', margin.toFixed(2), 'dB'],
+    ['Link Status', margin >= 0 ? 'PASS' : 'FAIL', ''],
+  ];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  download('link_budget_' + state.scenario.replace(/\s/g,'_') + '.csv', csv, 'text/csv');
+}
+
+function exportText() {
+  const { pt, gt, ll, freq, dist, gr, tsys, bw, reqsnr, la } = state;
+  const { eirp, fspl, pr, noise, snr, margin } = results;
+  const sep = '=' + '='.repeat(55);
+  const txt = [
+    sep,
+    '  SATELLITE LINK BUDGET REPORT',
+    '  Project 8.5 — Electronics Engineering',
+    '  Author: Haris Hussain | University of Punjab',
+    '  Scenario: ' + state.scenario,
+    '  Generated: ' + new Date().toISOString(),
+    sep,
+    '',
+    '[ TRANSMITTER ]',
+    `  Transmit Power    : ${pt.toFixed(2)} W  (${(10*Math.log10(pt)).toFixed(2)} dBW)`,
+    `  Tx Antenna Gain   : ${gt.toFixed(2)} dBi`,
+    `  Cable Losses      : ${ll.toFixed(2)} dB`,
+    `  EIRP              : ${eirp.toFixed(2)} dBW`,
+    '',
+    '[ PROPAGATION PATH ]',
+    `  Frequency         : ${freq} GHz`,
+    `  Slant Range       : ${dist} km`,
+    `  Free Space PL     : ${fspl.toFixed(2)} dB`,
+    `  Atmospheric Loss  : ${la.toFixed(2)} dB`,
+    '',
+    '[ RECEIVER ]',
+    `  Rx Antenna Gain   : ${gr.toFixed(2)} dBi`,
+    `  System Noise Temp : ${tsys} K`,
+    `  Noise Bandwidth   : ${bw} kHz`,
+    `  Received Power    : ${pr.toFixed(2)} dBW`,
+    `  Noise Floor       : ${noise.toFixed(2)} dBW`,
+    '',
+    '[ LINK QUALITY ]',
+    `  SNR               : ${snr.toFixed(2)} dB`,
+    `  Required SNR      : ${reqsnr.toFixed(2)} dB`,
+    `  LINK MARGIN       : ${margin.toFixed(2)} dB  [${margin >= 0 ? 'PASS ✓' : 'FAIL ✗'}]`,
+    '',
+    sep,
+    '  KEY EQUATIONS',
+    '  EIRP = 10·log(Pt) + Gt − Ll',
+    '  FSPL = 20·log(d) + 20·log(f) + 20·log(4π/c)',
+    '  Pr   = EIRP + Gr − FSPL − La',
+    '  N    = −228.6 + 10·log(Tsys) + 10·log(Bn)',
+    '  SNR  = Pr − N',
+    '  Margin = SNR − SNRreq',
+    sep,
+  ].join('\n');
+  download('link_budget_report.txt', txt, 'text/plain');
+}
+
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = 'data:' + type + ';charset=utf-8,' + encodeURIComponent(content);
+  a.download = filename;
+  a.click();
+}
+
+/* ================================================================
+   INIT
+================================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  initRanges();
+  initCharts();
+  updateOrbitAnim();
+  updateFreqInfo();
+  calculate();
+});
+</script>
+</body>
+</html>
