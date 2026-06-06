@@ -1,243 +1,246 @@
-# ☀️ Site Suitability Analysis for Solar Power Plants in Pakistan
+# Site Suitability Analysis for Solar Power Plants — Punjab, Pakistan
 
-> **Project 1.4** — GIS & Remote Sensing Portfolio  
-> **Author:** Haris Hussain | Space Science, University of the Punjab, Lahore  
-> **Tool Stack:** Vanilla JS · Chart.js · HTML5 Canvas · GIS Spatial Analysis  
-
----
-
-## 📌 Project Overview
-
-This project applies **Multi-Criteria Evaluation (MCE)** and **Weighted Overlay Analysis** to systematically identify the most suitable locations for utility-scale solar power plants across Pakistan. The analysis integrates five spatial criteria rasters — solar irradiance (GHI), terrain slope, land cover classification, distance to the national power grid, and distance to road networks — into a single composite suitability index.
-
-The interactive web application presents all analytical results in a self-contained, fully animated visualization tool that simulates a professional GIS energy-planning dashboard.
+**Author:** Haris Hussain  
+**Institution:** Space Science, University of the Punjab, Lahore  
+**Date:** 2026  
+**Satellite Data:** TerraClimate, SRTM DEM, ESA WorldCover  
+**Analysis Type:** Multi-Criteria Decision Analysis (MCDA)
 
 ---
 
-## 🌍 Pakistan Solar Context
+## Overview
 
-| Metric | Value |
-|---|---|
-| Total solar potential | **2.9 million MW** |
-| Current installed solar capacity | ~3,500 MW |
-| Peak GHI (Balochistan) | 6.5 kWh/m²/day |
-| Average annual sunshine hours | 2,200–3,000 hrs/yr |
-| Potential CO₂ reduction | ~120 million tons/yr |
-| Target solar share (2030) | 30% of electricity mix |
-| Suitable land area (barren + rangeland) | ~59% of Pakistan |
+Pakistan faces a persistent energy deficit, with demand regularly outstripping supply during peak summer months. Punjab province, the country's agricultural and industrial heartland, receives some of the highest solar irradiance levels in the world, making it a prime candidate for utility-scale solar photovoltaic (PV) installations. However, not all land is suitable: factors such as slope, aspect, land cover, and proximity to protected areas must be systematically evaluated before siting decisions can be made.
 
-Pakistan receives among the **highest solar irradiance levels in the world**, with Balochistan and Sindh exceeding 2,200–2,400 kWh/m²/yr — well above the threshold for economically viable large-scale solar power.
+This project implements a Multi-Criteria Decision Analysis (MCDA) framework in Google Earth Engine to identify and map suitable locations for solar power plants across Punjab, Pakistan. The analysis integrates five key factors — solar radiation, slope, aspect, land cover type, and protected area boundaries — into a single suitability index ranging from 0 (unsuitable) to 1 (highly suitable). Exclusionary constraints remove water bodies, steep slopes, snow/ice, wetlands, and legally protected areas from consideration.
 
----
+The output is a base suitability raster that can be further refined in a GIS environment by adding proximity-to-transmission-grid and distance-to-road analyses. This workflow demonstrates a reproducible, data-driven approach to renewable energy planning that can be adapted to any region with available satellite and ancillary data.
 
-## 🧮 MCE Methodology — Weighted Overlay Analysis
+## Data Sources
 
-### Framework
-The analysis employs **Weighted Linear Combination (WLC)**, a widely-used MCE technique in GIS-based site suitability modeling:
+| Dataset | Source | Resolution | Purpose |
+|---------|--------|-----------|---------|
+| Solar Radiation | TerraClimate (IDAHO_EPSCOR/TERRACLIMATE) | ~4 km | Mean downward surface shortwave radiation (2018–2022) |
+| Digital Elevation Model | SRTM GL1 (USGS/SRTMGL1_003) | 30 m | Elevation, slope, and aspect calculation |
+| Land Cover | ESA WorldCover v200 | 10 m | Land surface classification for suitability weighting |
+| Protected Areas | WDPA (WCMC/WDPA/current/polygons) | Vector | Exclusion of national parks and nature reserves |
 
-```
-S = Σ(wᵢ × xᵢ)     for i = 1 to n criteria
-```
+## Methodology
 
-Where:
-- **S** = composite suitability score (0–1)
-- **wᵢ** = weight assigned to criterion i (Σwᵢ = 1)
-- **xᵢ** = normalized criterion score (0–1) for each raster cell
+### Factor Selection and Normalization
 
-### Data Pre-processing Steps
-1. **Raster Acquisition** — NASA POWER (GHI), SRTM DEM (slope), ESA WorldCover 2021 (land cover), OSM (roads/grid)
-2. **Reprojection** — All rasters projected to `UTM Zone 42N (EPSG:32642)`
-3. **Resampling** — Unified 250m × 250m spatial resolution
-4. **Normalization** — Linear min-max normalization per criterion layer
-5. **Exclusion Zones** — Urban areas, protected forests, water bodies set to score = 0
-6. **Overlay** — Weighted sum of all normalized layers
+1. **Solar Radiation (Weight: 40%)** — Mean annual downward shortwave radiation from TerraClimate (2018–2022) is normalized to a 0–1 scale using min-max rescaling. Higher radiation values receive higher suitability scores.
 
-### Normalization Method
-```
-x_normalized = (x - x_min) / (x_max - x_min)          # direct (GHI, flat slope)
-x_normalized = 1 - (x - x_min) / (x_max - x_min)      # inverse (slope: flat = better)
-```
+2. **Slope (Weight: 20%)** — Derived from SRTM DEM. Slope suitability follows a linear decay function where 0° = 1.0 and 15° = 0.0. Slopes exceeding 15° are excluded entirely via the constraint mask.
 
----
+3. **Aspect (Weight: 10%)** — South-facing slopes (135°–225°) are optimal for solar PV in the northern hemisphere and receive a score of 1.0. Southeast and southwest aspects score 0.7, and all other aspects score 0.3.
 
-## ⚖️ Criteria & Default Weights
+4. **Land Cover (Weight: 30%)** — ESA WorldCover classes are remapped to suitability values:
+   - Bare/sparse land: 1.0 (ideal)
+   - Shrubland: 0.8
+   - Grassland: 0.7
+   - Cropland: 0.4
+   - Built-up: 0.1
+   - Tree cover, water, snow/ice, wetlands: 0.0 (excluded)
 
-| # | Criterion | Data Source | Resolution | Default Weight | Rationale |
-|---|---|---|---|---|---|
-| 1 | **Solar Irradiance (GHI)** | NASA POWER / PVGIS | 50 km → interpolated | **35%** | Primary driver of energy output |
-| 2 | **Slope / Terrain** | SRTM DEM | 30m | **20%** | Slopes <5° required for panel mounting |
-| 3 | **Land Cover** | ESA WorldCover 2021 | 10m | **20%** | Barren/desert land avoids food security conflicts |
-| 4 | **Distance to Power Grid** | NEPRA / OSM | Vector | **15%** | Reduces transmission infrastructure cost |
-| 5 | **Distance to Roads** | OpenStreetMap | Vector | **10%** | Affects construction access & O&M logistics |
-| — | **Total** | — | — | **100%** | — |
+### Constraints
 
-### Land Cover Suitability Scoring
-| Land Cover Class | ESA Code | Suitability Score |
-|---|---|---|
-| Barren / Sparse Vegetation | 60 | 1.00 (Excellent) |
-| Shrubland / Rangeland | 20 | 0.75 (Good) |
-| Herbaceous Vegetation | 30 | 0.60 (Moderate) |
-| Agricultural Land | 40 | 0.20 (Poor — food conflicts) |
-| Forest | 10 | 0.00 (Excluded) |
-| Urban / Built-up | 50 | 0.00 (Excluded) |
-| Water Bodies | 80 | 0.00 (Excluded) |
+Three binary constraint layers are applied multiplicatively:
+- **Protected Areas:** All WDPA polygons within the study area are masked out.
+- **Unsuitable Land Cover:** Water bodies, snow/ice, and wetlands are excluded.
+- **Steep Slopes:** Terrain exceeding 15° gradient is removed.
 
-### Slope Suitability Scoring
-| Slope Range | Score | Rationale |
-|---|---|---|
-| 0 – 2° | 1.00 | Ideal — no additional mounting cost |
-| 2 – 5° | 0.80 | Suitable — minor adjustment needed |
-| 5 – 10° | 0.50 | Marginal — increased cost |
-| 10 – 20° | 0.20 | Poor — significant engineering required |
-| > 20° | 0.00 | Excluded — not viable |
+### Suitability Index
 
----
-
-## 📍 Top 5 Candidate Sites
-
-| Rank | Site Name | Region | Area (km²) | GHI (kWh/m²/yr) | Suitability Score | Est. Capacity (MW) |
-|---|---|---|---|---|---|---|
-| 1 | **Khuzdar Solar Zone** | Balochistan | 850 | 2,310 | **0.91** | 4,250 |
-| 2 | **Thar Desert Complex** | Sindh (Thar) | 1,200 | 2,270 | **0.88** | 6,000 |
-| 3 | **Chagai Plateau** | W. Balochistan | 650 | 2,350 | **0.86** | 3,250 |
-| 4 | **Rahim Yar Khan Plains** | S. Punjab | 420 | 2,110 | **0.79** | 2,100 |
-| 5 | **Sanghar Flatlands** | Central Sindh | 380 | 2,050 | **0.74** | 1,900 |
-
-> Sites were ranked by descending composite WLC score. Final selection also applied minimum contiguous patch area (> 50 km²) and exclusion buffers (5 km from urban, 1 km from water).
-
----
-
-## ⚡ Energy Potential Formulas
-
-### Annual Energy Output (kWh)
-```
-E_annual = GHI × A × η × PR
-```
-| Variable | Description | Typical Value |
-|---|---|---|
-| GHI | Global Horizontal Irradiance (kWh/m²/yr) | 2,050–2,350 |
-| A | Panel/site area (m²) | Site-dependent |
-| η | Panel efficiency | 18–22% |
-| PR | Performance Ratio (system losses) | 75–85% |
-
-### CO₂ Offset
-```
-CO₂_offset (kg/yr) = E_annual × 0.433
-```
-*(0.433 kg CO₂/kWh = Pakistan grid emission factor, NEPRA 2023)*
-
-### Homes Powered
-```
-Homes = E_annual / 4,500 kWh/yr
-```
-*(Average Pakistani household: ~4,500 kWh/yr)*
-
-### Revenue Estimate
-```
-Revenue (PKR) = E_annual × PKR 15/kWh
-```
-*(Approximate solar tariff per NEPRA net metering regime)*
-
-### Installed Capacity
-```
-Capacity (MW) = Area (km²) × 1,000 × η × 0.2
-```
-
----
-
-## 🗺 Pakistan Land Cover (ESA WorldCover 2021)
-
-| Class | Area % | Solar Suitable? |
-|---|---|---|
-| Barren / Desert | 44% | ✅ Yes |
-| Agricultural | 28% | ❌ No (food security) |
-| Rangeland | 15% | ✅ Yes (partial) |
-| Forest | 5% | ❌ No (protected) |
-| Urban | 4% | ❌ No |
-| Water Bodies | 4% | ❌ No |
-
-> **~59% of Pakistan's land area** is potentially suitable for solar development from a land cover perspective.
-
----
-
-## 🌞 Monthly GHI Profile (kWh/m²/day)
-
-| Site | Jan | Apr | Jun | Aug | Oct | Dec |
-|---|---|---|---|---|---|---|
-| Chagai Plateau | 5.0 | 7.3 | 8.2 | 7.6 | 6.4 | 4.7 |
-| Khuzdar Solar Zone | 4.8 | 7.1 | 8.0 | 7.4 | 6.2 | 4.5 |
-| Thar Desert Complex | 4.6 | 6.9 | 7.8 | 7.2 | 5.9 | 4.3 |
-| Rahim Yar Khan | 4.2 | 6.4 | 7.2 | 6.7 | 5.5 | 3.9 |
-| Sanghar Flatlands | 4.0 | 6.2 | 7.0 | 6.5 | 5.2 | 3.7 |
-
-**Peak solar season:** May–August across all candidate sites.
-
----
-
-## 🖥 Web Application Features
-
-| Feature | Description |
-|---|---|
-| **Interactive Suitability Map** | 60×40 cell grid of Pakistan, color-coded by WLC score, hover to inspect cells |
-| **Multi-Criteria Weight Sliders** | Adjust 5 criteria weights in real-time |
-| **Animated Site Pins** | 5 recommended sites pulse with glow animation |
-| **Monthly GHI Chart** | Chart.js line chart Jan–Dec for all sites |
-| **Comparison Bar Chart** | GHI vs Score vs Area for candidate sites |
-| **Land Cover Doughnut Chart** | Pakistan land cover with suitability flags |
-| **Criteria Weight Polar Chart** | Live polar area chart |
-| **Energy Potential Calculator** | Live calculation of output, CO₂ offset, homes, revenue |
-| **Pakistan Solar Stats** | Animated number counters for national metrics |
-
----
-
-## 🛠 Technology Stack
-
-| Category | Technology |
-|---|---|
-| Structure | HTML5 Semantic Markup |
-| Styling | Vanilla CSS (custom properties, Grid, Flexbox, animations) |
-| Logic | Vanilla JavaScript (ES6+, Canvas API) |
-| Charts | Chart.js 4.4 (CDN) |
-| Map | HTML5 Canvas API (custom 2,400-cell raster renderer) |
-| Typography | Google Fonts: Orbitron, Inter, JetBrains Mono |
-| Deployment | Single self-contained HTML file |
-
----
-
-## 📚 Key Learning Outcomes
-
-1. **Multi-Criteria Evaluation (MCE)** — Weighted Linear Combination for spatial decision support
-2. **Raster Analysis** — Normalization, reclassification, weighted overlay in GIS
-3. **Solar Resource Assessment** — Interpreting GHI/DNI data from NASA POWER / PVGIS
-4. **Land Suitability Mapping** — ESA WorldCover classification for energy planning
-5. **Terrain Analysis** — SRTM slope derivation and impact on solar farm feasibility
-6. **Proximity Analysis** — Euclidean distance from infrastructure (roads, grid lines)
-7. **Energy Yield Modeling** — Converting solar resource + area into kWh and MW capacity
-8. **Data Visualization** — Communicating spatial analysis results interactively
-
----
-
-## 📂 Project Files
+The final suitability score is computed as a weighted linear combination:
 
 ```
-Site Suitability Analysis for Solar Power Plants/
-├── index.html                     ← Interactive web dashboard (self-contained)
-├── README.md                      ← This document
-├── GEE_Solar_Site_Suitability.js  ← Google Earth Engine script for real data
-└── step_by_step_guide.txt         ← Step-by-step analysis workflow
+Suitability = (SolarRad × 0.40 + LandCover × 0.30 + Slope × 0.20 + Aspect × 0.10) × ConstraintMask
 ```
 
----
+All constraint-masked pixels receive a score of 0 regardless of their factor values.
 
-## 👤 Author
+## Key Formulas
 
-**Haris Hussain**  
-Department of Space Science  
-University of the Punjab, Lahore, Pakistan  
+**Min-Max Normalization:**
 
-Portfolio Project **1.4** — GIS & Remote Sensing  
-*"Harnessing spatial analysis to accelerate Pakistan's renewable energy transition."*
+```
+X_norm = (X - X_min) / (X_max - X_min)
+```
 
----
+**Slope Suitability (linear decay):**
 
-*Data Sources: NASA POWER · SRTM (USGS) · ESA WorldCover 2021 · OpenStreetMap · NEPRA · IRENA*
+```
+Slope_Suit = clamp(1 - slope / 15, 0, 1)
+```
+
+## Results
+
+The analysis produces a continuous suitability raster (0–1) for Punjab province.
+
+> *Figure 1: Solar site suitability map of Punjab. Dark green areas indicate highly suitable sites (score > 0.7), typically corresponding to bare or shrubland with low slope and high solar radiation. Red areas represent unsuitable or constrained zones.*
+
+> *Figure 2: Exclusion mask showing protected areas, water bodies, and steep slopes removed from consideration.*
+
+The base suitability layer is intended for further refinement in ArcGIS Pro or QGIS, where proximity to existing transmission infrastructure and road networks can be incorporated as additional weighted criteria.
+
+## How to Reproduce
+
+1. Open the [Google Earth Engine Code Editor](https://code.earthengine.google.com/).
+2. Create a new script and paste the contents of `GEE_Solar_Site_Suitability.js`.
+3. **Important:** Change `ADM0_NAME` from `'India'` to `'Pakistan'` on line 12 of the script to target Punjab, Pakistan.
+4. Adjust the study area by modifying the `ADM1_NAME` filter if needed.
+5. Click **Run** and inspect the Console output and Map layers.
+6. Go to the **Tasks** tab and click **Run** for the export.
+7. Download the GeoTIFF from your Google Drive.
+8. Open in ArcGIS Pro or QGIS.
+9. Apply a red-yellow-green color ramp (red = poor, green = good).
+10. Create a layout with legend, scale bar, north arrow, and title.
+11. Export as PDF or PNG at 300 DPI.
+
+## Accuracy Assessment
+
+A formal accuracy assessment was not performed for this MCDA model. Sensitivity analysis of the factor weights is recommended to understand how changes in weighting affect the final suitability classification. Ground-truth validation through field visits to top-ranked sites would provide the strongest validation.
+
+## Limitations
+
+- **Coarse climate data:** TerraClimate solar radiation data has a ~4 km spatial resolution, which may miss local-scale variability.
+- **Subjective weighting:** The analytical weights (40/30/20/10) are based on literature review and expert judgment rather than empirical optimization.
+- **No grid proximity analysis:** Distance to transmission infrastructure is a critical siting factor but must be modeled separately in a desktop GIS.
+- **Static analysis:** This assessment does not account for future climate scenarios or land-use change.
+- **Administrative boundary artifact:** The GAUL 2015 level-1 boundary for Punjab may not match current administrative divisions.
+
+## Learning Outcomes
+
+This project demonstrates the following skills:
+
+- Multi-Criteria Decision Analysis (MCDA) in Google Earth Engine
+- Satellite-derived solar radiation assessment using TerraClimate
+- Terrain analysis (slope, aspect) from SRTM DEM
+- Land cover reclassification and suitability mapping
+- Constraint-based exclusion modeling
+- Export and visualization of suitability rasters for GIS refinement
+
+## Files in This Folder
+
+| File | Description |
+|------|-------------|
+| `GEE_Solar_Site_Suitability.js` | Google Earth Engine JavaScript code for MCDA analysis |
+| `README.md` | This document — project documentation and reproduction guide |
+| `step_by_step_guide.txt` | Step-by-step instructions for reproduction in QGIS/ArcGIS Pro |
+| `outputs/` | Folder for exported GeoTIFFs and final map layouts (populated after running the analysis) |
+
+## Google Earth Engine Code
+
+```javascript
+// Google Earth Engine Script for Solar Power Plant Site Suitability
+// Description: Multi-Criteria Decision Analysis (MCDA) for Solar Suitability
+// considering Solar Radiation, Slope, Aspect, Land Cover, and Protected Areas.
+// Output: Exports a Solar Site Suitability Raster for further refinement in ArcGIS Pro.
+
+// 1. DEFINE STUDY AREA (Punjab)
+// Using FAO GAUL boundaries. The default is 'Punjab' in India. 
+// You can change 'India' to 'Pakistan' or 'ADM1_NAME' if you are looking at the Pakistani province.
+var admin = ee.FeatureCollection("FAO/GAUL/2015/level1");
+var roi = admin.filter(ee.Filter.and(
+  ee.Filter.eq('ADM1_NAME', 'Punjab'),
+  ee.Filter.eq('ADM0_NAME', 'India') // Change 'India' to 'Pakistan' if needed
+)).first().geometry();
+
+Map.centerObject(roi, 7);
+Map.addLayer(roi, {color: 'blue'}, 'Study Area (Punjab)', false);
+
+// -------------------------------------------------------------
+// 2. DATA ACQUISITION & NORMALIZATION (MCDA FACTORS)
+// -------------------------------------------------------------
+
+// A. Solar Radiation (Dataset: TerraClimate - Downward surface shortwave radiation)
+var climate = ee.ImageCollection("IDAHO_EPSCOR/TERRACLIMATE")
+                .filterDate('2018-01-01', '2022-12-31')
+                .select('srad');
+// Calculate mean over the period
+var meanSrad = climate.mean().clip(roi); // W/m^2
+
+// Normalize Solar Radiation (Higher = more suitable, scaled 0 to 1)
+var maxSrad = ee.Number(meanSrad.reduceRegion(ee.Reducer.max(), roi, 5000).get('srad'));
+var minSrad = ee.Number(meanSrad.reduceRegion(ee.Reducer.min(), roi, 5000).get('srad'));
+var normSrad = meanSrad.subtract(ee.Image(minSrad))
+                   .divide(ee.Image(maxSrad).subtract(ee.Image(minSrad)));
+
+// B. Topography: Elevation, Slope & Aspect (Dataset: SRTM DEM 30m)
+var dem = ee.Image('USGS/SRTMGL1_003').clip(roi);
+var slope = ee.Terrain.slope(dem);
+var aspect = ee.Terrain.aspect(dem);
+
+// Normalize Slope (Lower slope is better: < 5 degrees ideal, > 15 is generally excluded)
+// We use a linear decay for suitability where 0 degrees = 1.0, and 15 degrees = 0.0
+var slopeSuitability = ee.Image(1).subtract(slope.divide(15)).clamp(0, 1);
+
+// Normalize Aspect (South-facing is best in Northern Hemisphere, ~135 to 225 degrees)
+// South receives the most direct sunlight throughout the year
+var aspectSuitability = aspect.expression(
+  '(a >= 135 && a <= 225) ? 1.0 : (a >= 90 && a < 135) || (a > 225 && a <= 270) ? 0.7 : 0.3',
+  { 'a': aspect }
+);
+
+// C. Land Cover (Dataset: ESA WorldCover 10m)
+var lc = ee.ImageCollection("ESA/WorldCover/v200").first().clip(roi);
+
+// Assign suitability based on class (0 to 1 scale)
+// ESA Classes: 10 Trees(0.1), 20 Shrubland(0.8), 30 Grassland(0.7), 40 Cropland(0.4), 
+// 50 Built-up(0.1 - excluded due to land cost/availability), 60 Bare(1.0 - ideal), 
+// 70 Snow/Ice(0), 80 Water(0), 90 Wetland(0), 95 Mangroves(0), 100 Moss(0)
+var lcSuitability = lc.remap(
+  [10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100],
+  [0.1, 0.8, 0.7, 0.4, 0.1, 1.0, 0, 0, 0, 0, 0]
+);
+
+// -------------------------------------------------------------
+// 3. CONSTRAINTS (Areas to Exclude Completely)
+// -------------------------------------------------------------
+
+// Constraint 1: Protected Areas (Dataset: WDPA)
+// We cannot build power plants in national parks or nature reserves.
+var protectedAreas = ee.FeatureCollection("WCMC/WDPA/current/polygons").filterBounds(roi);
+var paMask = ee.Image(1).paint(protectedAreas, 0).clip(roi); // 0 inside PA, 1 outside
+
+// Constraint 2: Unsuitable Land/Water (Classes 70, 80, 90)
+var waterMask = lc.neq(80).and(lc.neq(70)).and(lc.neq(90));
+
+// Constraint 3: Steep slopes (> 15 degrees are typically excluded for utility-scale solar)
+var slopeMask = slope.lt(15);
+
+// Combine all exclusionary masks
+var totalMask = paMask.and(waterMask).and(slopeMask);
+
+// -------------------------------------------------------------
+// 4. SUITABILITY MAPPING (MCDA Weighted Overlay)
+// -------------------------------------------------------------
+// Weights: Solar Rad 40%, Land Cover 30%, Slope 20%, Aspect 10%
+var initialSuitability = normSrad.multiply(0.40)
+  .add(lcSuitability.multiply(0.30))
+  .add(slopeSuitability.multiply(0.20))
+  .add(aspectSuitability.multiply(0.10))
+  .multiply(totalMask) // Apply constraints (excluded areas become 0)
+  .rename('Solar_Suitability_Base');
+
+// Visualize the results
+Map.addLayer(initialSuitability.updateMask(totalMask), 
+  {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'green', 'darkgreen']}, 
+  'Initial Solar Suitability (GEE)');
+
+// -------------------------------------------------------------
+// 5. EXPORT FOR ARCGIS PRO
+// -------------------------------------------------------------
+// We export this base suitability layer. 
+// "Proximity to grid" is best modeled inside ArcGIS using Euclidean Distance on local grid vectors!
+
+Export.image.toDrive({
+  image: initialSuitability,
+  description: 'Solar_Site_Suitability_Base',
+  folder: 'GEE_Solar_Project',
+  scale: 30, 
+  region: roi.bounds(),
+  maxPixels: 1e13
+});
+```

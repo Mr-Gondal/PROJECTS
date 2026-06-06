@@ -1,170 +1,261 @@
-# 🛰 Urban Sprawl Analysis of Lahore (2015–2025)
+# Urban Sprawl Analysis of Lahore (2015–2025)
 
-> **GIS & Remote Sensing · Project 1.5**  
-> *Space Science, University of the Punjab*  
-> **Author:** Haris Hussain
-
----
-
-## 📌 Project Overview
-
-This project conducts a decade-long (2015–2025) analysis of **urban sprawl in Lahore, Pakistan** — one of South Asia's fastest-growing megacities. Using multi-temporal satellite imagery from **Landsat 8/9** and **Sentinel-2**, the project maps:
-
-- 🏙 **Built-up area expansion** from ~1,456 km² (2015) to ~2,108 km² (2025)
-- 🌿 **Green space loss** from 480 km² down to 268 km² — a 44% reduction
-- 👥 **Population density shifts** from 11.2M to 15.4M residents
-- 🏗 **Land-use transitions** — 325 km² of farmland and greenery absorbed by urban fabric
+**Author:** Haris Hussain  
+**Institution:** Space Science, University of the Punjab, Lahore  
+**Date:** 2025  
+**Type:** GIS & Remote Sensing Portfolio Project
 
 ---
 
-## 🧭 Methodology
+## Overview
 
-### 1. Land Use / Land Cover (LULC) Classification
-- **Input**: Landsat 8 OLI (30m resolution) + Sentinel-2 MSI (10m resolution)
-- **Method**: Supervised classification using **Random Forest** algorithm in Google Earth Engine (GEE)
-- **Classes**: Dense Urban, New Development, Green Space, Agricultural Land, Waterbodies, Bare Land
-- **Accuracy**: Overall Accuracy ≥ 88%, Kappa Coefficient ≥ 0.85
+Lahore, the second-largest city in Pakistan, has experienced rapid and often unplanned urban expansion over the past decade. Driven by population growth, rural-to-urban migration, and economic development, the city's built-up area has expanded significantly into surrounding agricultural and peri-urban zones. This project quantifies that expansion by applying machine learning classification to multi-temporal Landsat 8 imagery (2015 and 2025) within Google Earth Engine, producing Land Use / Land Cover (LULC) maps and a change-detection layer that highlights newly built-up areas.
 
-### 2. Change Detection
-- **Technique**: Post-classification change detection (bi-temporal comparison)
-- **Epochs**: Annual composites from 2015 to 2025 (10 maps)
-- **Filtering**: Median composites to reduce cloud cover artifacts
-- **Indices Used**:
-  - **NDBI** (Normalized Difference Built-up Index): identifies built-up surfaces
-  - **NDVI** (Normalized Difference Vegetation Index): maps green/vegetated cover
-  - **MNDWI** (Modified NDWI): isolates water bodies
-
-### 3. Sprawl Metrics Computation
-- Sprawl Index, Compactness Ratio, and Green Space per capita calculated per 2-year epoch
-- Population data integrated from Pakistan Bureau of Statistics (PBS) Census 2017 & 2023
+Pakistan's urban population is growing at over 3% annually, and Lahore — as a major economic and cultural hub — is at the forefront of this transformation. Understanding the spatial pattern of sprawl is critical for urban planners, environmental managers, and infrastructure developers. This analysis provides a replicable, data-driven method for monitoring urban growth using freely available satellite imagery and cloud-based processing.
 
 ---
 
-## 📡 Data Sources
+## Data Sources
 
-| Dataset | Source | Resolution | Use |
-|---|---|---|---|
-| Landsat 8 OLI/TIRS Collection 2 | USGS Earth Explorer | 30m | LULC Classification 2015–2021 |
-| Landsat 9 OLI-2 | USGS Earth Explorer | 30m | LULC Classification 2021–2025 |
-| Sentinel-2 MSI Level-2A | ESA Copernicus Hub | 10m | High-res green space mapping |
-| SRTM Digital Elevation Model | NASA LP DAAC | 30m | Topographic context |
-| PBS Census Data | Pakistan Bureau of Statistics | District level | Population density |
-| OpenStreetMap | OSM Foundation | Vector | Landmark & road reference |
+| Dataset | Source | Resolution | Bands Used |
+|---------|--------|------------|------------|
+| Landsat 8 Collection 2 Level-2 Surface Reflectance | [USGS EarthExplorer](https://earthexplorer.usgs.gov/) via Google Earth Engine (`LANDSAT/LC08/C02/T1_L2`) | 30 m | SR_B2 (Blue), SR_B3 (Green), SR_B4 (Red), SR_B5 (NIR), SR_B6 (SWIR1), SR_B7 (SWIR2) |
+| Administrative Boundaries | FAO GAUL 2015 Level 2 (`FAO/GAUL/2015/level2`) | Vector | — |
+
+Imagery was filtered for cloud cover < 15% and composited per epoch (2015 and 2024–2025).
 
 ---
 
-## 📊 Lahore Urban Growth Statistics (2015–2025)
+## Methodology
 
-| Year | Built-up Area (km²) | Green Space (km²) | Population (M) | Sprawl Index | Impervious (%) |
-|------|--------------------|--------------------|----------------|--------------|---------------|
-| 2015 | 1,456 | 480 | 11.2 | 0.55 | 56% |
-| 2016 | 1,510 | 461 | 11.5 | 0.56 | 58% |
-| 2017 | 1,572 | 442 | 11.8 | 0.57 | 59% |
-| 2018 | 1,645 | 420 | 12.1 | 0.58 | 60% |
-| 2019 | 1,720 | 398 | 12.5 | 0.59 | 62% |
-| 2020 | 1,808 | 373 | 12.9 | 0.60 | 64% |
-| 2021 | 1,895 | 350 | 13.3 | 0.62 | 66% |
-| 2022 | 1,972 | 328 | 13.7 | 0.63 | 67% |
-| 2023 | 2,048 | 306 | 14.2 | 0.65 | 69% |
-| 2024 | 2,138 | 286 | 14.8 | 0.67 | 71% |
-| 2025 | 2,108 | 268 | 15.4 | 0.68 | 74% |
+### 1. Pre-processing (GEE)
 
-> *Slight built-up decrease in 2025 reflects improved urban densification policies (LDA City Plan 2024)*
+- **Cloud masking:** The `QA_PIXEL` band is used to mask clouds, cirrus, and cloud shadows via bitmask operations.
+- **Scaling:** Surface reflectance values are scaled using the Collection 2 formula: `pixel × 0.0000275 − 0.2`, converting raw DN to reflectance.
+- **Composite:** A median reducer is applied over each epoch to produce cloud-free image composites.
+- **Clip:** Both composites are clipped to the Lahore district boundary.
 
----
+### 2. Classification — Random Forest
 
-## 📐 Sprawl Index Formula
+A Random Forest classifier (50 trees) is trained on two land-cover classes:
 
-$$\text{Sprawl Index} = \frac{\text{Urban Area (km²)}}{\text{Population (× 1000)}}$$
+- **Urban (Class 1):** Built-up areas, roads, concrete surfaces
+- **Non-Urban (Class 0):** Vegetation, water, bare soil, agriculture
 
-| Metric | Formula | 2015 | 2025 | Change |
-|---|---|---|---|---|
-| **Sprawl Index** | Urban Area / Pop (1000s) | 0.55 | 0.68 | ▲ +23% |
-| **Compactness Ratio** | 4π·Area / Perimeter² | 0.50 | 0.41 | ▼ −18% |
-| **Green Space/Capita** | Green Area / Pop | 5.4 m² | 3.2 m² | ▼ −41% |
-| **Impervious Surface** | Impervious Px / Total Urban | 56% | 74% | ▲ +31% |
+Training samples are extracted from the 6 spectral bands listed above. The classifier is trained independently for 2015 and 2025 to account for spectral shifts across time.
 
----
+### 3. Change Detection
 
-## 🗺 Land Use Change Matrix (2015→2025)
-
-| Source Class | → Urban (km²) | Share of Total |
-|---|---|---|
-| Agricultural Land | 280 km² | 70.5% |
-| Green Space | 45 km² | 11.3% |
-| Bare/Fallow Land | 59 km² | 14.8% |
-| Water Bodies | 14 km² | 3.5% |
-| **Total** | **398 km²** | **100%** |
-
----
-
-## ✨ Features
-
-| # | Feature | Technology | Description |
-|---|---|---|---|
-| 1 | Urban Growth Map Animation | Canvas API | Year-by-year animated footprint showing urban expansion 2015–2025 |
-| 2 | Growth Metrics Timeline | Chart.js Line | Built-up area, green space & population on triple Y-axes |
-| 3 | Land Use Change Matrix | Chart.js Stacked Bar | Sankey-style conversion flows from agricultural/green land |
-| 4 | Urban Density Heatmap | Canvas API | Concentric density rings + distance profile chart |
-| 5 | Sprawl Indicators Panel | Custom HTML/JS | 4 key sprawl metrics with trend bars and delta indicators |
-| 6 | District Comparison | Chart.js Grouped Bar | Growth % per LDA zone: DHA, Gulberg, Johar Town, Bahria, Model Town |
-| 7 | Smart City Benchmarking | Chart.js Radar | Lahore vs Karachi, Islamabad, Faisalabad on 6 urban dimensions |
-| 8 | Population Density Map | Canvas API | Grid-cell density + glowing population hub visualization |
-
----
-
-## 🛠 Tech Stack
-
-| Technology | Purpose |
-|---|---|
-| **HTML5 / Vanilla JS** | Single-file self-contained app |
-| **Chart.js v4.4.0** (CDN) | Timeline, stacked bar, grouped bar, radar charts |
-| **Canvas 2D API** | Urban growth map, density heatmap, population map |
-| **CSS Custom Properties** | Design tokens: colors, typography, spacing |
-| **Google Fonts** (CDN) | Orbitron, Inter, JetBrains Mono |
-| **Intersection Observer** | Scroll reveal animations |
-| **RequestAnimationFrame** | Animated city grid background & counter |
-
----
-
-## 🎯 Learning Outcomes
-
-By completing this project, the author demonstrates proficiency in:
-
-1. **Remote Sensing**: Satellite imagery processing, LULC classification, change detection
-2. **GIS Analysis**: Spatial metrics, urban morphology, density modelling
-3. **Data Visualization**: Multi-axis charts, canvas mapping, animated data stories
-4. **Urban Analytics**: Sprawl indices, compactness, green space measurement
-5. **Web Development**: Self-contained interactive portfolio pages
-
----
-
-## 🏙 Key Findings
-
-- Lahore's urban footprint grew by **+652 km²** (~45%) over 10 years
-- **DHA Lahore** and **Bahria Town** drove the most explosive peripheral growth
-- Green space per capita dropped below the WHO minimum of **9 m²/person** (currently 3.2 m²)
-- Agricultural land conversion dominates at **70.5%** of all urban expansion
-- The city's compactness is declining — expansion is becoming **more sprawled, less compact**
-
----
-
-## 📁 File Structure
+New urban areas are identified by subtracting the 2015 classification from the 2025 classification:
 
 ```
-Urban Sprawl Analysis of Lahore (2015-2025)/
-├── index.html      ← Self-contained interactive web app (single file)
-└── README.md       ← This file
+New Urban = Classification_2025 − Classification_2015
 ```
 
----
-
-## 👤 Author
-
-**Haris Hussain**  
-BSc Space Science | University of the Punjab, Lahore  
-GIS & Remote Sensing Portfolio — **Project 1.5**
+A pixel value of **+1** indicates a transition from Non-Urban (0) in 2015 to Urban (1) in 2025 — i.e., urban sprawl. A `pixelArea()` reducer then calculates the total area (in m²) of new built-up land.
 
 ---
 
-*Data is representational and derived from published LULC studies on Lahore metropolitan area. Visualization is for educational portfolio purposes.*
+## Results
+
+The output consists of three raster layers exported as GeoTIFFs:
+
+1. **Lahore_LULC_2015.tif** — Classified land cover for 2015 (red = urban, green = non-urban).
+2. **Lahore_LULC_2025.tif** — Classified land cover for 2025.
+3. **New Built-up Regions** — A yellow overlay (in the GEE Map) highlighting pixels that changed from non-urban to urban between the two epochs.
+
+The GEE console prints the total new urban area in square meters, which can be converted to km² for reporting.
+
+> **Note:** These results are for *demonstration purposes* only. Training data is minimal (4 point samples), so the classification accuracy is not yet suitable for scientific publication.
+
+---
+
+## How to Reproduce
+
+1. Open the [Google Earth Engine Code Editor](https://code.earthengine.google.com).
+2. Create a new script and paste the full code from `GEE_Urban_Sprawl_Analysis.js`.
+3. **(Critical)** Use the GEE geometry tools to draw **training polygons**:
+   - Create a geometry named `urbanTrain` with property `class = 1` — draw over buildings, roads, and concrete surfaces.
+   - Create a geometry named `nonUrbanTrain` with property `class = 0` — draw over vegetation, water, and bare land.
+   - Replace the placeholder `sampleUrban` and `sampleNonUrban` variables with your new geometry imports.
+4. Click **Run**. Inspect the classified layers on the map.
+5. Open the **Tasks** tab to export `Lahore_LULC_2015` and `Lahore_LULC_2025` to your Google Drive as GeoTIFFs (30 m resolution).
+6. *(Optional)* Import the exported rasters into QGIS or ArcGIS Pro for further analysis (directional ellipses, future prediction via the MOLUSCE plugin).
+
+---
+
+## Accuracy Assessment
+
+**Not yet performed.** The current script includes only *4 point samples* (2 urban, 2 non-urban) as placeholders. **A minimum of 20–30 polygons per class is recommended** to train a robust Random Forest model. For a proper accuracy assessment:
+
+- Reserve 30% of training polygons for validation.
+- Compute a confusion matrix, overall accuracy, and Kappa coefficient.
+- Consider temporally independent validation points for change detection.
+
+---
+
+## Limitations
+
+- **Training data:** The single largest limitation. With only 4 points, the classifier is essentially untrained and results are unreliable.
+- **Temporal resolution:** Only two epochs (2015 and 2025) are compared. Annual or biennial analysis would provide a more nuanced picture.
+- **Single sensor:** Landsat 8 alone is used; incorporating Sentinel-2 (10 m) could improve spatial detail.
+- **No accuracy metrics:** Without a confusion matrix, map uncertainty is unknown.
+- **Binary classification:** Only two classes (urban / non-urban) are mapped. A multi-class scheme (e.g., water, vegetation, bare soil, high/low density urban) would be more informative.
+- **Seasonal effects:** Image composites from different seasons may introduce spectral variability unrelated to land cover change.
+
+---
+
+## Learning Outcomes
+
+Through this project, the following skills were developed:
+
+- **Google Earth Engine JavaScript API:** Filtering, cloud masking, scaling, and compositing Landsat 8 imagery.
+- **Supervised classification:** Training a Random Forest classifier with spectral bands.
+- **Change detection:** Raster algebra to identify land-cover transitions.
+- **Area calculation:** Using `pixelArea()` and reducers to quantify change.
+- **Export workflows:** Transferring GEE results to desktop GIS software (QGIS, ArcGIS Pro).
+- **Spatial modeling workflow:** Understanding the full pipeline from satellite imagery to predictive mapping (including potential use of MOLUSCE for future scenario simulation).
+
+---
+
+## Files in This Folder
+
+| File | Description |
+|------|-------------|
+| `README.md` | This document |
+| `GEE_Urban_Sprawl_Analysis.js` | Google Earth Engine JavaScript code for LULC classification and change detection |
+| `step_by_step_guide.txt` | Extended guide covering Phases 2–4 (ArcGIS directional analysis and QGIS MOLUSCE prediction for 2035) |
+| *(Output rasters are exported to Google Drive, not stored locally)* | — |
+
+---
+
+## Google Earth Engine Code
+
+The full JavaScript code is reproduced below and also available in `GEE_Urban_Sprawl_Analysis.js`.
+
+```javascript
+// Google Earth Engine Script for Urban Sprawl Analysis
+// Description: Multi-temporal Land Use Land Cover (LULC) Classification 
+// using Landsat 8 (2015 and 2025) to map urban expansion in Lahore.
+// Output: Exports Classified LULC Rasters for 2015 and 2025
+
+// 1. DEFINE STUDY AREA (Lahore, Pakistan)
+var admin2 = ee.FeatureCollection("FAO/GAUL/2015/level2");
+var roi = admin2.filter(ee.Filter.eq('ADM2_NAME', 'Lahore')).first().geometry();
+
+Map.centerObject(roi, 10);
+Map.addLayer(roi, {color: 'red'}, 'Lahore Boundary', false);
+
+// -------------------------------------------------------------
+// 2. IMAGE PREPARATION (Landsat 8 Surface Reflectance)
+// -------------------------------------------------------------
+// Mask clouds and scale pixel values
+function maskL8sr(image) {
+  var qa = image.select('QA_PIXEL');
+  var cloudBitMask = 1 << 3;
+  var cirrusBitMask = 1 << 2;
+  var cloudExtBitMask = 1 << 4;
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+    .and(qa.bitwiseAnd(cirrusBitMask).eq(0))
+    .and(qa.bitwiseAnd(cloudExtBitMask).eq(0));
+  return image.updateMask(mask).multiply(0.0000275).add(-0.2); // Scaling factors for Collection 2
+}
+
+// 2015 Image Composite 
+var image2015 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+                  .filterBounds(roi)
+                  .filterDate('2015-01-01', '2015-12-31')
+                  .filter(ee.Filter.lt('CLOUD_COVER', 15))
+                  .map(maskL8sr)
+                  .median()
+                  .clip(roi);
+
+// 2025 Image Composite
+var image2025 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+                  .filterBounds(roi)
+                  .filterDate('2024-01-01', '2025-12-31')
+                  .filter(ee.Filter.lt('CLOUD_COVER', 15))
+                  .map(maskL8sr)
+                  .median()
+                  .clip(roi);
+
+var visParams = {bands: ['SR_B4', 'SR_B3', 'SR_B2'], min: 0, max: 0.3};
+Map.addLayer(image2015, visParams, 'Landsat 8 RGB 2015', false);
+Map.addLayer(image2025, visParams, 'Landsat 8 RGB 2025', false);
+
+// -------------------------------------------------------------
+// 3. LULC CLASSIFICATION (Random Forest)
+// -------------------------------------------------------------
+// IMPORTANT: The samples below are just placeholders to let the script run.
+// For accurate results, use the GEE geometry tools to draw polygons 
+// over built-up areas (class: 1) and rural areas (class: 0) to replace these points!
+
+var sampleUrban = ee.FeatureCollection([
+  ee.Feature(ee.Geometry.Point([74.3587, 31.5204]), {'class': 1}), 
+  ee.Feature(ee.Geometry.Point([74.3200, 31.5500]), {'class': 1})  
+]);
+var sampleNonUrban = ee.FeatureCollection([
+  ee.Feature(ee.Geometry.Point([74.4500, 31.4000]), {'class': 0}), 
+  ee.Feature(ee.Geometry.Point([74.2000, 31.6000]), {'class': 0})
+]);
+var trainingPoints = sampleUrban.merge(sampleNonUrban);
+
+var bands = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'];
+
+// Train RF for 2015
+var training2015 = image2015.select(bands).sampleRegions({
+  collection: trainingPoints, properties: ['class'], scale: 30
+});
+var classifier2015 = ee.Classifier.smileRandomForest(50).train({
+  features: training2015, classProperty: 'class', inputProperties: bands
+});
+var classified2015 = image2015.select(bands).classify(classifier2015);
+
+// Train RF for 2025
+var training2025 = image2025.select(bands).sampleRegions({
+  collection: trainingPoints, properties: ['class'], scale: 30
+});
+var classifier2025 = ee.Classifier.smileRandomForest(50).train({
+  features: training2025, classProperty: 'class', inputProperties: bands
+});
+var classified2025 = image2025.select(bands).classify(classifier2025);
+
+Map.addLayer(classified2015, {min: 0, max: 1, palette: ['green', 'red']}, 'Classified 2015', false);
+Map.addLayer(classified2025, {min: 0, max: 1, palette: ['green', 'red']}, 'Classified 2025');
+
+// -------------------------------------------------------------
+// 4. CHANGE DETECTION (Urban Expansion)
+// -------------------------------------------------------------
+// Calculate new urban areas
+var expansion = classified2025.subtract(classified2015);
+var newUrban = expansion.eq(1); // Areas that went from 0 (Non-Urban) to 1 (Urban)
+
+Map.addLayer(newUrban.selfMask(), {palette: 'yellow'}, 'New Built-up Regions (Sprawl)');
+
+// Calculate expansion area automatically in GEE
+var areaImage = ee.Image.pixelArea().updateMask(newUrban);
+var newUrbanArea = areaImage.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: roi,
+  scale: 30,
+  maxPixels: 1e13
+}).get('area');
+
+print('New Urban Area (Sprawl) in Square Meters:', newUrbanArea);
+
+// -------------------------------------------------------------
+// 5. EXPORT TASKS FOR QGIS/ARCGIS PRO
+// -------------------------------------------------------------
+// Export 2015 Classification
+Export.image.toDrive({
+  image: classified2015, 
+  description: 'Lahore_LULC_2015',
+  folder: 'GEE_Urban_Sprawl', scale: 30, region: roi, maxPixels: 1e13
+});
+// Export 2025 Classification
+Export.image.toDrive({
+  image: classified2025, 
+  description: 'Lahore_LULC_2025',
+  folder: 'GEE_Urban_Sprawl', scale: 30, region: roi, maxPixels: 1e13
+});
+```
