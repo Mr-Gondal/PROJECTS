@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RLC Circuit Analysis Suite | Haris Hussain</title>
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #5b677a;
+      --line: #d5dee9;
+      --soft: #f7fafc;
+      --accent: #0f766e;
+      --accent-2: #2563eb;
+      --danger: #c2410c;
+      --good: #15803d;
+      --dark: #0b1220;
+      --shadow: 0 18px 46px rgba(31, 41, 55, 0.09);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    aside {
+      padding: 18px;
+      align-self: start;
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+
+    .workspace {
+      padding: 18px;
+      min-width: 0;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font-size: 1.42rem;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    h2 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    h3 {
+      font-size: 0.92rem;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+      margin-bottom: 14px;
+    }
+
+    .group {
+      border-top: 1px solid var(--line);
+      margin-top: 14px;
+      padding-top: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid #c8d2df;
+      border-radius: 6px;
+      padding: 8px 9px;
+      font-size: 0.92rem;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid rgba(15, 118, 110, 0.22);
+      border-color: var(--accent);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid #b9c5d4;
+      border-radius: 6px;
+      background: #fff;
+      color: #152238;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.active, button.primary {
+      border-color: #0f5f59;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      padding: 11px;
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 1.06rem;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .plot-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+    }
+
+    .plot-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--dark);
+    }
+
+    .plot-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 0.86rem;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 310px;
+      background: var(--dark);
+    }
+
+    #phasorCanvas {
+      height: 250px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 11px;
+      padding: 9px 12px;
+      background: #111827;
+      color: #d1d5db;
+      font-size: 0.82rem;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 24px;
+      height: 3px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .blue { background: #60a5fa; }
+    .red { background: #f87171; }
+    .green { background: #34d399; }
+    .amber { background: #fbbf24; }
+
+    .lower {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .section p, .section li {
+      color: #475569;
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .formula {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.82rem;
+      overflow-x: auto;
+      color: #111827;
+      margin-top: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.87rem;
+    }
+
+    th, td {
+      padding: 7px 4px;
+      border-bottom: 1px solid #e5eaf0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      width: 46%;
+      color: #334155;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #f0fdfa;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      color: #134e4a;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .callout.warn {
+      border-left-color: var(--danger);
+      background: #fff7ed;
+      color: #7c2d12;
+    }
+
+    @media (max-width: 1180px) {
+      main { grid-template-columns: 1fr; }
+      aside { position: static; max-height: none; }
+      .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .plot-grid, .lower { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      main { padding: 10px; }
+      .grid-2, .segmented, .actions, .metrics { grid-template-columns: 1fr; }
+      .header { display: block; }
+      .badge { margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <aside class="panel">
+      <h1>RLC Circuit Analysis Suite</h1>
+      <p class="subtitle">AC steady-state, resonance, phasor, frequency sweep, and step-response analysis for entry-level electrical engineering.</p>
+
+      <div class="group">
+        <label>Analysis Mode</label>
+        <div class="segmented">
+          <button type="button" data-type="RC">RC</button>
+          <button type="button" data-type="RL">RL</button>
+          <button type="button" class="active" data-type="RLC">RLC</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <label for="preset">Preset Scenario</label>
+        <select id="preset">
+          <option value="custom">Custom values</option>
+          <option value="audio">Audio RC filter check</option>
+          <option value="coil">Relay coil RL check</option>
+          <option value="resonance" selected>Series RLC resonance demo</option>
+          <option value="damped">Damped RLC transient demo</option>
+        </select>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="resistance">Resistance (ohm)</label>
+          <input id="resistance" type="number" min="0.1" step="10" value="100">
+        </div>
+        <div>
+          <label for="voltage">Input Voltage (Vrms)</label>
+          <input id="voltage" type="number" min="0.1" step="0.5" value="5">
+        </div>
+      </div>
+
+      <div class="group grid-2">
+        <div id="cap-control">
+          <label for="capacitance">Capacitance (uF)</label>
+          <input id="capacitance" type="number" min="0.001" step="0.1" value="1">
+        </div>
+        <div id="ind-control">
+          <label for="inductance">Inductance (mH)</label>
+          <input id="inductance" type="number" min="0.001" step="1" value="100">
+        </div>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="frequency">Test Frequency (Hz)</label>
+          <input id="frequency" type="number" min="0.1" step="10" value="503">
+        </div>
+        <div>
+          <label for="loadLimit">Current Limit (mA)</label>
+          <input id="loadLimit" type="number" min="1" step="10" value="80">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="primary" id="run">Analyze</button>
+        <button type="button" id="export">Export CSV</button>
+      </div>
+    </aside>
+
+    <section class="workspace panel">
+      <div class="header">
+        <div>
+          <h2 id="headline">Series RLC resonance demo</h2>
+          <p class="subtitle" id="summary">Reactances cancel near resonance, so current rises and phase approaches zero.</p>
+        </div>
+        <span class="badge" id="badge">Near resonance</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><span>Impedance</span><strong id="zOut">--</strong></div>
+        <div class="metric"><span>Current</span><strong id="iOut">--</strong></div>
+        <div class="metric"><span>Phase</span><strong id="phaseOut">--</strong></div>
+        <div class="metric"><span>Resonance / Cutoff</span><strong id="specialOut">--</strong></div>
+        <div class="metric"><span>Quality Factor</span><strong id="qOut">--</strong></div>
+      </div>
+
+      <div class="plot-grid">
+        <div class="plot-card">
+          <div class="plot-title"><span>Sinusoidal Response</span><span id="waveLabel">Voltage and current</span></div>
+          <canvas id="waveCanvas" width="900" height="310"></canvas>
+          <div class="legend">
+            <span><i class="blue"></i>Voltage</span>
+            <span><i class="red"></i>Current, scaled</span>
+          </div>
+        </div>
+        <div class="plot-card">
+          <div class="plot-title"><span>Phasor View</span><span id="phasorLabel">V reference</span></div>
+          <canvas id="phasorCanvas" width="440" height="250"></canvas>
+          <div class="legend">
+            <span><i class="blue"></i>Voltage</span>
+            <span><i class="red"></i>Current</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="plot-grid" style="margin-top:14px">
+        <div class="plot-card">
+          <div class="plot-title"><span>Frequency Sweep</span><span>Current magnitude vs frequency</span></div>
+          <canvas id="sweepCanvas" width="900" height="310"></canvas>
+          <div class="legend">
+            <span><i class="green"></i>Current magnitude</span>
+            <span><i class="amber"></i>Selected frequency</span>
+          </div>
+        </div>
+        <div class="plot-card">
+          <div class="plot-title"><span>Step Response</span><span id="stepLabel">Normalized response</span></div>
+          <canvas id="stepCanvas" width="440" height="310"></canvas>
+          <div class="legend">
+            <span><i class="green"></i>Response</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lower">
+        <section class="section">
+          <h2>Engineering Interpretation</h2>
+          <p id="notes"></p>
+          <div class="formula" id="formula"></div>
+          <div class="callout" id="review"></div>
+        </section>
+
+        <section class="section">
+          <h2>Detailed Results</h2>
+          <table><tbody id="tableBody"></tbody></table>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { type: "RLC", last: null };
+    const inputs = {
+      preset: $("preset"),
+      resistance: $("resistance"),
+      voltage: $("voltage"),
+      capacitance: $("capacitance"),
+      inductance: $("inductance"),
+      frequency: $("frequency"),
+      loadLimit: $("loadLimit")
+    };
+
+    const presets = {
+      audio: { type: "RC", resistance: 3300, capacitance: 0.047, inductance: 100, voltage: 2, frequency: 1000, loadLimit: 5 },
+      coil: { type: "RL", resistance: 220, capacitance: 1, inductance: 250, voltage: 12, frequency: 50, loadLimit: 80 },
+      resonance: { type: "RLC", resistance: 100, capacitance: 1, inductance: 100, voltage: 5, frequency: 503, loadLimit: 80 },
+      damped: { type: "RLC", resistance: 45, capacitance: 2.2, inductance: 68, voltage: 5, frequency: 410, loadLimit: 120 }
+    };
+
+    function num(id) {
+      return Math.max(Number(inputs[id].value), 1e-12);
+    }
+
+    function values() {
+      return {
+        r: num("resistance"),
+        v: num("voltage"),
+        c: num("capacitance") * 1e-6,
+        l: num("inductance") * 1e-3,
+        f: num("frequency"),
+        limit: num("loadLimit") / 1000
+      };
+    }
+
+    function analyzeAt(type, v, f) {
+      const w = 2 * Math.PI * f;
+      const xc = 1 / (w * v.c);
+      const xl = w * v.l;
+      let x = 0;
+      if (type === "RC") x = -xc;
+      if (type === "RL") x = xl;
+      if (type === "RLC") x = xl - xc;
+      const z = Math.sqrt(v.r * v.r + x * x);
+      const phase = Math.atan2(x, v.r);
+      const current = v.v / z;
+      const pf = Math.cos(phase);
+      return { w, xc, xl, x, z, phase, current, pf, realPower: v.v * current * pf };
+    }
+
+    function analyze() {
+      const v = values();
+      const result = analyzeAt(state.type, v, v.f);
+      const f0 = 1 / (2 * Math.PI * Math.sqrt(v.l * v.c));
+      const q = state.type === "RLC" ? (1 / v.r) * Math.sqrt(v.l / v.c) : null;
+      const bandwidth = state.type === "RLC" ? f0 / Math.max(q, 1e-9) : null;
+      const rcCutoff = 1 / (2 * Math.PI * v.r * v.c);
+      const rlCutoff = v.r / (2 * Math.PI * v.l);
+      const tau = state.type === "RC" ? v.r * v.c : state.type === "RL" ? v.l / v.r : null;
+      const damping = state.type === "RLC" ? v.r / (2 * v.l) : null;
+      const omega0 = state.type === "RLC" ? 1 / Math.sqrt(v.l * v.c) : null;
+      const zeta = state.type === "RLC" ? damping / omega0 : null;
+      return { ...v, ...result, f0, q, bandwidth, rcCutoff, rlCutoff, tau, damping, omega0, zeta };
+    }
+
+    function fmt(value, digits = 3) {
+      if (!Number.isFinite(value)) return "--";
+      if ((Math.abs(value) >= 100000 || Math.abs(value) < 0.001) && value !== 0) return value.toExponential(2);
+      return value.toLocaleString(undefined, { maximumFractionDigits: digits });
+    }
+
+    function ohm(value) {
+      const sign = value < 0 ? "-" : "";
+      const abs = Math.abs(value);
+      if (abs >= 1e6) return `${sign}${fmt(abs / 1e6)} Mohm`;
+      if (abs >= 1e3) return `${sign}${fmt(abs / 1e3)} kohm`;
+      return `${sign}${fmt(abs)} ohm`;
+    }
+
+    function resizeCanvas(canvas, h) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(320, Math.floor(rect.width * dpr));
+      canvas.height = Math.floor(h * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h };
+    }
+
+    function grid(ctx, w, h) {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#0b1220";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(148,163,184,.18)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= w; x += w / 10) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y <= h; y += h / 6) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+      ctx.strokeStyle = "rgba(226,232,240,.45)";
+      ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+    }
+
+    function drawWave(r) {
+      const canvas = $("waveCanvas");
+      const { ctx, w, h } = resizeCanvas(canvas, 310);
+      grid(ctx, w, h);
+      const amp = h * 0.31;
+      const center = h / 2;
+      const cycles = 2;
+      function plot(color, phase) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) {
+          const t = x / w;
+          const y = center - amp * Math.sin(2 * Math.PI * cycles * t + phase);
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      plot("#60a5fa", 0);
+      plot("#f87171", -r.phase);
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "12px Arial";
+      ctx.fillText(`f = ${fmt(r.f)} Hz`, 14, 22);
+      ctx.fillText(`I phase relative to V = ${fmt(-r.phase * 180 / Math.PI, 2)} deg`, 14, 40);
+    }
+
+    function drawPhasor(r) {
+      const canvas = $("phasorCanvas");
+      const { ctx, w, h } = resizeCanvas(canvas, 250);
+      grid(ctx, w, h);
+      const cx = w / 2, cy = h / 2, radius = Math.min(w, h) * 0.33;
+      ctx.strokeStyle = "rgba(255,255,255,.45)";
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.stroke();
+      function arrow(color, angle, length, label) {
+        const x = cx + Math.cos(angle) * length;
+        const y = cy - Math.sin(angle) * length;
+        ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+        const a = Math.atan2(cy - y, x - cx);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 10 * Math.cos(a - 0.45), y + 10 * Math.sin(a - 0.45));
+        ctx.lineTo(x - 10 * Math.cos(a + 0.45), y + 10 * Math.sin(a + 0.45));
+        ctx.closePath(); ctx.fill();
+        ctx.font = "12px Arial"; ctx.fillText(label, x + 7, y - 7);
+      }
+      arrow("#60a5fa", 0, radius, "V");
+      arrow("#f87171", -r.phase, radius * 0.92, "I");
+    }
+
+    function drawSweep(r) {
+      const canvas = $("sweepCanvas");
+      const { ctx, w, h } = resizeCanvas(canvas, 310);
+      grid(ctx, w, h);
+      const minF = Math.max(0.5, r.f / 20);
+      const maxF = Math.max(r.f * 20, state.type === "RLC" ? r.f0 * 5 : r.f * 2);
+      const points = [];
+      let maxI = 0;
+      for (let i = 0; i < 220; i++) {
+        const t = i / 219;
+        const f = minF * Math.pow(maxF / minF, t);
+        const a = analyzeAt(state.type, r, f);
+        points.push({ f, i: a.current });
+        maxI = Math.max(maxI, a.current);
+      }
+      const left = 42, right = 14, top = 20, bottom = 34;
+      function xScale(f) { return left + (Math.log(f / minF) / Math.log(maxF / minF)) * (w - left - right); }
+      function yScale(i) { return h - bottom - (i / maxI) * (h - top - bottom); }
+      ctx.strokeStyle = "#34d399"; ctx.lineWidth = 2.5; ctx.beginPath();
+      points.forEach((p, idx) => {
+        const x = xScale(p.f), y = yScale(p.i);
+        if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      const sx = xScale(r.f);
+      ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx, top); ctx.lineTo(sx, h - bottom); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.82)";
+      ctx.font = "12px Arial";
+      ctx.fillText(`${fmt(minF)} Hz`, left, h - 10);
+      ctx.fillText(`${fmt(maxF)} Hz`, w - 90, h - 10);
+      ctx.fillText(`max I in sweep: ${fmt(maxI * 1000, 2)} mA`, 14, 22);
+    }
+
+    function drawStep(r) {
+      const canvas = $("stepCanvas");
+      const { ctx, w, h } = resizeCanvas(canvas, 310);
+      grid(ctx, w, h);
+      const left = 32, right = 14, top = 20, bottom = 28;
+      ctx.strokeStyle = "#34d399";
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      const tau = r.tau || (1 / Math.max(r.omega0, 1e-9));
+      const tMax = state.type === "RLC" ? 6 / Math.max(r.omega0, 1e-9) : 5 * tau;
+      for (let i = 0; i <= 220; i++) {
+        const t = (i / 220) * tMax;
+        let yNorm = 0;
+        if (state.type === "RC") yNorm = 1 - Math.exp(-t / tau);
+        else if (state.type === "RL") yNorm = 1 - Math.exp(-t / tau);
+        else {
+          if (r.zeta < 1) {
+            const wd = r.omega0 * Math.sqrt(1 - r.zeta * r.zeta);
+            yNorm = 1 - Math.exp(-r.zeta * r.omega0 * t) * (Math.cos(wd * t) + (r.zeta / Math.sqrt(1 - r.zeta * r.zeta)) * Math.sin(wd * t));
+          } else {
+            yNorm = 1 - Math.exp(-r.omega0 * t);
+          }
+        }
+        const x = left + (i / 220) * (w - left - right);
+        const y = h - bottom - Math.max(0, Math.min(1.35, yNorm)) / 1.35 * (h - top - bottom);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.82)";
+      ctx.font = "12px Arial";
+      ctx.fillText(state.type === "RLC" ? `damping ratio = ${fmt(r.zeta, 3)}` : `tau = ${fmt(tau * 1000, 3)} ms`, 14, 22);
+    }
+
+    function narrative(r) {
+      const phaseDeg = r.phase * 180 / Math.PI;
+      if (state.type === "RC") {
+        return {
+          headline: "RC filter and phase analysis",
+          badge: "Capacitive behavior",
+          summary: "Capacitive reactance decreases as frequency increases, so current leads voltage.",
+          notes: "This RC mode is useful for understanding filter behavior, sensor input conditioning, capacitor charging, and phase lead. At the selected frequency, the capacitor reactance combines with resistance to set impedance and current.",
+          formula: "Xc = 1 / (2*pi*f*C), |Z| = sqrt(R^2 + Xc^2), fc = 1 / (2*pi*R*C)"
+        };
+      }
+      if (state.type === "RL") {
+        return {
+          headline: "RL coil and phase analysis",
+          badge: "Inductive behavior",
+          summary: "Inductive reactance increases with frequency, so current lags voltage.",
+          notes: "This RL mode is useful for relay coils, motors, solenoids, inductive loads, and power-factor discussion. The inductor resists current change, which creates phase lag and a time constant.",
+          formula: "Xl = 2*pi*f*L, |Z| = sqrt(R^2 + Xl^2), fc = R / (2*pi*L)"
+        };
+      }
+      return {
+        headline: "RLC resonance and damping analysis",
+        badge: Math.abs(phaseDeg) < 5 ? "Near resonance" : phaseDeg > 0 ? "Net inductive" : "Net capacitive",
+        summary: "Inductive and capacitive reactance oppose each other; near resonance they cancel and current reaches a peak.",
+        notes: "This RLC mode demonstrates resonance, quality factor, bandwidth, and transient damping. It is useful for filters, tuned circuits, oscillation behavior, and troubleshooting why current can rise sharply near a resonant frequency.",
+        formula: "X = Xl - Xc, |Z| = sqrt(R^2 + X^2), f0 = 1 / (2*pi*sqrt(L*C)), Q = (1/R)*sqrt(L/C)"
+      };
+    }
+
+    function render() {
+      const r = analyze();
+      state.last = r;
+      const text = narrative(r);
+      $("headline").textContent = text.headline;
+      $("badge").textContent = text.badge;
+      $("summary").textContent = text.summary;
+      $("notes").textContent = text.notes;
+      $("formula").textContent = text.formula;
+      $("zOut").textContent = ohm(r.z);
+      $("iOut").textContent = `${fmt(r.current * 1000, 2)} mA`;
+      $("phaseOut").textContent = `${fmt(r.phase * 180 / Math.PI, 2)} deg`;
+      $("specialOut").textContent = state.type === "RC" ? `${fmt(r.rcCutoff)} Hz fc` : state.type === "RL" ? `${fmt(r.rlCutoff)} Hz fc` : `${fmt(r.f0)} Hz f0`;
+      $("qOut").textContent = state.type === "RLC" ? fmt(r.q, 3) : "N/A";
+
+      const review = [];
+      if (r.current > r.limit) review.push(`Current is above the selected ${fmt(r.limit * 1000)} mA review limit. Check resistor value and source rating.`);
+      if (state.type === "RLC" && Math.abs(r.f - r.f0) / r.f0 < 0.05) review.push("The circuit is operating close to resonance, so current is near its peak and phase is close to zero.");
+      if (!review.length) review.push("No warning at the selected values. The circuit is within the current review limit.");
+      $("review").textContent = review.join(" ");
+      $("review").className = r.current > r.limit ? "callout warn" : "callout";
+
+      const rows = [
+        ["Resistance", ohm(r.r)],
+        ["Capacitance", state.type === "RL" ? "Not used" : `${fmt(r.c * 1e6)} uF`],
+        ["Inductance", state.type === "RC" ? "Not used" : `${fmt(r.l * 1e3)} mH`],
+        ["Xc", state.type === "RL" ? "Not used" : ohm(r.xc)],
+        ["Xl", state.type === "RC" ? "Not used" : ohm(r.xl)],
+        ["Net reactance", ohm(r.x)],
+        ["Power factor", fmt(r.pf, 3)],
+        ["Real power", `${fmt(r.realPower * 1000, 2)} mW`]
+      ];
+      if (state.type === "RC" || state.type === "RL") rows.push(["Time constant", `${fmt(r.tau * 1000, 3)} ms`]);
+      if (state.type === "RLC") {
+        rows.push(["Bandwidth", `${fmt(r.bandwidth)} Hz`]);
+        rows.push(["Damping ratio", fmt(r.zeta, 3)]);
+      }
+      $("tableBody").innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
+
+      $("cap-control").style.display = state.type === "RL" ? "none" : "block";
+      $("ind-control").style.display = state.type === "RC" ? "none" : "block";
+
+      drawWave(r);
+      drawPhasor(r);
+      drawSweep(r);
+      drawStep(r);
+    }
+
+    function applyPreset(name) {
+      if (!presets[name]) return;
+      const p = presets[name];
+      state.type = p.type;
+      for (const key of ["resistance", "capacitance", "inductance", "voltage", "frequency", "loadLimit"]) {
+        inputs[key].value = p[key];
+      }
+      document.querySelectorAll("[data-type]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.type === state.type);
+      });
+      render();
+    }
+
+    function exportCsv() {
+      const r = state.last || analyze();
+      const rows = [
+        ["field", "value"],
+        ["mode", state.type],
+        ["resistance_ohm", r.r],
+        ["capacitance_f", state.type === "RL" ? "" : r.c],
+        ["inductance_h", state.type === "RC" ? "" : r.l],
+        ["frequency_hz", r.f],
+        ["voltage_vrms", r.v],
+        ["impedance_ohm", r.z],
+        ["current_a", r.current],
+        ["phase_deg", r.phase * 180 / Math.PI],
+        ["power_factor", r.pf],
+        ["real_power_w", r.realPower],
+        ["resonance_hz", state.type === "RLC" ? r.f0 : ""],
+        ["quality_factor", state.type === "RLC" ? r.q : ""]
+      ];
+      const csv = rows.map((row) => row.join(",")).join("\\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rlc-analysis-${state.type.toLowerCase()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll("[data-type]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.type = button.dataset.type;
+        inputs.preset.value = "custom";
+        document.querySelectorAll("[data-type]").forEach((b) => b.classList.toggle("active", b === button));
+        render();
+      });
+    });
+
+    Object.values(inputs).forEach((input) => {
+      input.addEventListener("input", () => {
+        if (input !== inputs.preset) inputs.preset.value = "custom";
+        render();
+      });
+    });
+
+    inputs.preset.addEventListener("change", () => applyPreset(inputs.preset.value));
+    $("run").addEventListener("click", render);
+    $("export").addEventListener("click", exportCsv);
+    window.addEventListener("resize", render);
+    applyPreset("resonance");
+  </script>
+</body>
+</html>

@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Microgrid Protection Digital Twin | Haris Hussain</title>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --panel: #ffffff;
+      --ink: #111827;
+      --muted: #607086;
+      --line: #d4dde9;
+      --soft: #f8fafc;
+      --dark: #0b1220;
+      --teal: #0f766e;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --amber: #b45309;
+      --green: #15803d;
+      --violet: #6d28d9;
+      --shadow: 0 18px 48px rgba(15, 23, 42, 0.09);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 370px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    aside {
+      padding: 18px;
+      align-self: start;
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+    }
+
+    .workspace {
+      padding: 18px;
+      min-width: 0;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1 {
+      font-size: 1.42rem;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    h2 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+      margin-bottom: 14px;
+    }
+
+    .group {
+      border-top: 1px solid var(--line);
+      margin-top: 14px;
+      padding-top: 14px;
+    }
+
+    label {
+      display: block;
+      color: #334155;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      padding: 8px 9px;
+      color: var(--ink);
+      font-size: 0.92rem;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid rgba(15, 118, 110, 0.22);
+      border-color: var(--teal);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      min-height: 40px;
+      border: 1px solid #0f5f59;
+      border-radius: 6px;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: #152238;
+      border-color: #b9c5d4;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.warn {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .badge.trip {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 11px;
+      background: var(--soft);
+      min-width: 0;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.06rem;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .top-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 400px;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .diagram {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 14px;
+      min-height: 260px;
+    }
+
+    .diagram svg {
+      width: 100%;
+      height: 270px;
+      display: block;
+    }
+
+    .node {
+      fill: #fff;
+      stroke: #334155;
+      stroke-width: 1.6;
+    }
+
+    .bus {
+      stroke: #111827;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .line {
+      stroke: #64748b;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    .flow {
+      stroke: var(--teal);
+      stroke-width: 4;
+      fill: none;
+      stroke-dasharray: 8 8;
+      animation: dash 1.4s linear infinite;
+    }
+
+    @keyframes dash {
+      to { stroke-dashoffset: -32; }
+    }
+
+    .svg-text {
+      fill: #111827;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .svg-small {
+      fill: #475569;
+      font-size: 11px;
+    }
+
+    .protection {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .relay-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .relay {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #f8fafc;
+      font-size: 0.88rem;
+    }
+
+    .relay strong {
+      color: #111827;
+    }
+
+    .status-ok { color: var(--green); font-weight: 700; }
+    .status-warn { color: var(--amber); font-weight: 700; }
+    .status-trip { color: var(--red); font-weight: 700; }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .chart-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--dark);
+    }
+
+    .chart-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #111827;
+      color: #e5e7eb;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 290px;
+      background: var(--dark);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 11px;
+      padding: 9px 12px;
+      background: #111827;
+      color: #d1d5db;
+      font-size: 0.8rem;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 24px;
+      height: 3px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .c-pv { background: #fbbf24; }
+    .c-load { background: #60a5fa; }
+    .c-batt { background: #34d399; }
+    .c-grid { background: #f87171; }
+    .c-voltage { background: #a78bfa; }
+    .c-frequency { background: #2dd4bf; }
+
+    .lower {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .section p, .section li {
+      color: #475569;
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .formula {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 8px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.82rem;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.87rem;
+    }
+
+    th, td {
+      padding: 7px 4px;
+      border-bottom: 1px solid #e5eaf0;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      width: 45%;
+      color: #334155;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 1240px) {
+      main { grid-template-columns: 1fr; }
+      aside { position: static; max-height: none; }
+      .top-grid, .lower { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+
+    @media (max-width: 780px) {
+      main { padding: 10px; }
+      .grid-2, .actions, .chart-grid { grid-template-columns: 1fr; }
+      .header { display: block; }
+      .badge { margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <aside class="panel">
+      <h1>Smart Microgrid Protection Digital Twin</h1>
+      <p class="subtitle">PV, battery, grid import/export, load shedding, voltage/frequency stability, and relay protection in one graduate-level simulation.</p>
+
+      <div class="group">
+        <label for="scenario">Operating Scenario</label>
+        <select id="scenario">
+          <option value="normal">Normal campus microgrid</option>
+          <option value="cloudy">Cloudy day with PV intermittency</option>
+          <option value="outage">Evening grid outage / islanding</option>
+          <option value="overload">Evening overload stress</option>
+          <option value="lg">Line-to-ground fault</option>
+          <option value="ll">Line-to-line fault</option>
+          <option value="lll">Three-phase bus fault</option>
+        </select>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="loadScale">Load Scale (%)</label>
+          <input id="loadScale" type="number" min="40" max="180" step="5" value="100">
+        </div>
+        <div>
+          <label for="irradiance">Solar Irradiance (%)</label>
+          <input id="irradiance" type="number" min="20" max="120" step="5" value="95">
+        </div>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="batteryKwh">Battery Size (kWh)</label>
+          <input id="batteryKwh" type="number" min="50" max="600" step="10" value="240">
+        </div>
+        <div>
+          <label for="initialSoc">Initial SOC (%)</label>
+          <input id="initialSoc" type="number" min="10" max="100" step="5" value="68">
+        </div>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="reserveSoc">Reserve SOC (%)</label>
+          <input id="reserveSoc" type="number" min="5" max="60" step="5" value="20">
+        </div>
+        <div>
+          <label for="tariff">Base Tariff (PKR/kWh)</label>
+          <input id="tariff" type="number" min="10" max="100" step="1" value="48">
+        </div>
+      </div>
+
+      <div class="group grid-2">
+        <div>
+          <label for="pickup">Relay Pickup (A)</label>
+          <input id="pickup" type="number" min="50" max="1000" step="10" value="220">
+        </div>
+        <div>
+          <label for="tms">Relay TMS</label>
+          <input id="tms" type="number" min="0.05" max="1" step="0.05" value="0.15">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="simulate">Run Simulation</button>
+        <button type="button" class="secondary" id="export">Export CSV</button>
+      </div>
+    </aside>
+
+    <section class="workspace panel">
+      <div class="header">
+        <div>
+          <h2>Campus Microgrid EMS + Protection Study</h2>
+          <p class="subtitle" id="summary">A 24-hour digital twin for renewable generation, storage dispatch, grid interaction, and protection behavior.</p>
+        </div>
+        <span class="badge" id="systemBadge">Stable operation</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><span>PV Energy</span><strong id="pvEnergy">--</strong></div>
+        <div class="metric"><span>Grid Cost</span><strong id="gridCost">--</strong></div>
+        <div class="metric"><span>Final SOC</span><strong id="finalSoc">--</strong></div>
+        <div class="metric"><span>Load Shed</span><strong id="shedEnergy">--</strong></div>
+        <div class="metric"><span>Relay Decision</span><strong id="relayDecision">--</strong></div>
+      </div>
+
+      <div class="top-grid">
+        <section class="diagram">
+          <h2>One-Line Microgrid Diagram</h2>
+          <svg viewBox="0 0 760 310" aria-label="Microgrid one-line diagram">
+            <line class="bus" x1="130" y1="155" x2="635" y2="155"></line>
+            <path class="line" d="M190 70 L190 155"></path>
+            <path class="line" d="M330 70 L330 155"></path>
+            <path class="line" d="M480 70 L480 155"></path>
+            <path class="line" d="M625 155 L625 235"></path>
+            <path class="flow" id="pvFlow" d="M190 80 L190 150"></path>
+            <path class="flow" id="batteryFlow" d="M330 80 L330 150"></path>
+            <path class="flow" id="gridFlow" d="M480 80 L480 150"></path>
+            <path class="flow" id="loadFlow" d="M620 160 L620 230"></path>
+
+            <rect class="node" x="140" y="28" width="100" height="48" rx="8"></rect>
+            <text class="svg-text" x="161" y="48">PV Array</text>
+            <text class="svg-small" id="pvNow" x="156" y="66">-- kW</text>
+
+            <rect class="node" x="280" y="28" width="100" height="48" rx="8"></rect>
+            <text class="svg-text" x="300" y="48">Battery</text>
+            <text class="svg-small" id="socNow" x="296" y="66">-- % SOC</text>
+
+            <rect class="node" x="430" y="28" width="100" height="48" rx="8"></rect>
+            <text class="svg-text" x="459" y="48">Grid</text>
+            <text class="svg-small" id="gridNow" x="448" y="66">-- kW</text>
+
+            <rect class="node" x="570" y="234" width="110" height="48" rx="8"></rect>
+            <text class="svg-text" x="596" y="254">Load</text>
+            <text class="svg-small" id="loadNow" x="590" y="272">-- kW</text>
+
+            <circle class="node" cx="130" cy="155" r="28"></circle>
+            <text class="svg-text" x="106" y="151">Relay</text>
+            <text class="svg-small" id="relayNow" x="105" y="168">Healthy</text>
+
+            <text class="svg-text" x="345" y="145">415 V AC Bus</text>
+            <text class="svg-small" id="busNow" x="344" y="177">-- pu, -- Hz</text>
+          </svg>
+        </section>
+
+        <section class="protection">
+          <h2>Protection Relay Panel</h2>
+          <div class="relay-list" id="relayPanel"></div>
+        </section>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title"><span>24-Hour Power Flow</span><span>kW</span></div>
+          <canvas id="powerChart" width="720" height="290"></canvas>
+          <div class="legend">
+            <span><i class="c-pv"></i>PV</span>
+            <span><i class="c-load"></i>Load</span>
+            <span><i class="c-batt"></i>Battery</span>
+            <span><i class="c-grid"></i>Grid import</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title"><span>Battery SOC and Load Shedding</span><span>% / kW</span></div>
+          <canvas id="socChart" width="720" height="290"></canvas>
+          <div class="legend">
+            <span><i class="c-batt"></i>SOC</span>
+            <span><i class="c-grid"></i>Load shed</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title"><span>Voltage and Frequency Quality</span><span>pu / Hz</span></div>
+          <canvas id="qualityChart" width="720" height="290"></canvas>
+          <div class="legend">
+            <span><i class="c-voltage"></i>Voltage pu</span>
+            <span><i class="c-frequency"></i>Frequency Hz</span>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title"><span>Relay Current and Trip Window</span><span>A</span></div>
+          <canvas id="relayChart" width="720" height="290"></canvas>
+          <div class="legend">
+            <span><i class="c-grid"></i>Fault/load current</span>
+            <span><i class="c-pv"></i>Pickup setting</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lower">
+        <section class="section">
+          <h2>Engineering Interpretation</h2>
+          <p id="interpretation"></p>
+          <div class="formula">
+P_balance = PV + Battery_discharge + Grid_import - Load - Battery_charge - Shed<br>
+SOC_next = SOC + (charge*eta - discharge/eta) * dt / Battery_capacity<br>
+IEC inverse relay: t = TMS * 0.14 / ((I/Ipickup)^0.02 - 1)
+          </div>
+        </section>
+        <section class="section">
+          <h2>System KPIs</h2>
+          <table><tbody id="kpiTable"></tbody></table>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const inputs = {
+      scenario: $("scenario"),
+      loadScale: $("loadScale"),
+      irradiance: $("irradiance"),
+      batteryKwh: $("batteryKwh"),
+      initialSoc: $("initialSoc"),
+      reserveSoc: $("reserveSoc"),
+      tariff: $("tariff"),
+      pickup: $("pickup"),
+      tms: $("tms")
+    };
+    let latest = null;
+
+    function val(id) {
+      return Number(inputs[id].value);
+    }
+
+    function baseLoad(hour) {
+      const morning = 42 * Math.exp(-Math.pow((hour - 9) / 2.7, 2));
+      const evening = 58 * Math.exp(-Math.pow((hour - 19.5) / 3.0, 2));
+      const night = 34;
+      const daytime = hour > 7 && hour < 17 ? 38 : 0;
+      return night + daytime + morning + evening;
+    }
+
+    function pvPower(hour, irradiance, scenario) {
+      const sun = Math.max(0, Math.sin(Math.PI * (hour - 6) / 12));
+      let cloud = 1;
+      if (scenario === "cloudy") {
+        cloud = 0.78 - 0.32 * Math.exp(-Math.pow((hour - 13) / 1.2, 2)) - 0.18 * Math.exp(-Math.pow((hour - 16) / 0.8, 2));
+      }
+      return 135 * sun * sun * (irradiance / 100) * Math.max(0.25, cloud);
+    }
+
+    function tariffMultiplier(hour) {
+      if (hour >= 18 && hour <= 22) return 1.55;
+      if (hour >= 7 && hour <= 11) return 1.15;
+      return 0.82;
+    }
+
+    function faultForScenario(scenario, hour) {
+      if (scenario === "lg" && hour >= 10.5 && hour < 10.75) return { type: "LG", currentMultiplier: 3.2, voltage: 0.58 };
+      if (scenario === "ll" && hour >= 14 && hour < 14.25) return { type: "LL", currentMultiplier: 4.7, voltage: 0.42 };
+      if (scenario === "lll" && hour >= 15.5 && hour < 15.75) return { type: "LLL", currentMultiplier: 8.4, voltage: 0.18 };
+      return null;
+    }
+
+    function relayTripTime(current, pickup, tms) {
+      const ratio = current / pickup;
+      if (ratio <= 1) return Infinity;
+      return tms * 0.14 / (Math.pow(ratio, 0.02) - 1);
+    }
+
+    function simulate() {
+      const scenario = inputs.scenario.value;
+      const loadScale = val("loadScale") / 100;
+      const irradiance = val("irradiance");
+      const capacity = val("batteryKwh");
+      const reserveSoc = val("reserveSoc") / 100;
+      const pickup = val("pickup");
+      const tms = val("tms");
+      const dt = 0.25;
+      const transformerKva = 250;
+      const batteryMaxKw = Math.max(35, capacity * 0.42);
+      const eta = 0.92;
+      let soc = val("initialSoc") / 100;
+      const rows = [];
+      let cost = 0, pvEnergy = 0, loadEnergy = 0, gridImportEnergy = 0, exportEnergy = 0, shedEnergy = 0, maxCurrent = 0;
+      let relayEvent = "No trip";
+      let tripSeen = false;
+
+      for (let step = 0; step < 96; step++) {
+        const hour = step * dt;
+        let load = baseLoad(hour) * loadScale;
+        if (scenario === "overload" && hour >= 18 && hour <= 21) load *= 1.75;
+        const pv = pvPower(hour, irradiance, scenario);
+        const gridAvailable = !(scenario === "outage" && hour >= 18 && hour < 20.5);
+        let charge = 0, discharge = 0, shed = 0;
+        const net = pv - load;
+
+        if (net > 0) {
+          charge = Math.min(net, batteryMaxKw, Math.max(0, (0.96 - soc) * capacity / dt));
+        } else {
+          const peakPeriod = hour >= 18 && hour <= 22;
+          const shouldDischarge = peakPeriod || !gridAvailable || scenario === "overload";
+          if (shouldDischarge && soc > reserveSoc) {
+            discharge = Math.min(-net, batteryMaxKw, Math.max(0, (soc - reserveSoc) * capacity * eta / dt));
+          }
+        }
+
+        soc += (charge * eta - discharge / eta) * dt / capacity;
+        soc = Math.max(0.03, Math.min(0.98, soc));
+
+        let grid = load - pv - discharge + charge;
+        if (!gridAvailable) {
+          if (grid > 0) {
+            shed = grid;
+            grid = 0;
+          }
+        }
+
+        const apparentKw = Math.max(load, Math.abs(grid), pv + discharge);
+        let voltage = 1 - 0.045 * Math.max(0, grid) / transformerKva + 0.012 * Math.max(0, -grid) / transformerKva;
+        let frequency = 50 - 0.045 * Math.max(0, shed) / Math.max(1, load) - 0.018 * Math.max(0, grid - 180) / 50;
+        const fault = faultForScenario(scenario, hour);
+        let current = apparentKw * 1000 / (Math.sqrt(3) * 415 * 0.88);
+        let event = "";
+        if (fault) {
+          current *= fault.currentMultiplier;
+          voltage = fault.voltage;
+          frequency -= fault.type === "LLL" ? 0.7 : 0.25;
+          event = fault.type;
+        }
+        if (!gridAvailable) event = event || "ISLAND";
+        if (shed > 0) event = event || "SHED";
+
+        const tripTime = relayTripTime(current, pickup, tms);
+        const uvTrip = voltage < 0.82;
+        const ofTrip = frequency < 49.2 || frequency > 50.8;
+        const ocTrip = tripTime < 0.35;
+        if ((ocTrip || uvTrip || ofTrip) && !tripSeen) {
+          tripSeen = true;
+          relayEvent = `${event || "Stress"} trip at ${hour.toFixed(2)} h`;
+        }
+
+        cost += Math.max(0, grid) * dt * val("tariff") * tariffMultiplier(hour);
+        pvEnergy += pv * dt;
+        loadEnergy += load * dt;
+        gridImportEnergy += Math.max(0, grid) * dt;
+        exportEnergy += Math.max(0, -grid) * dt;
+        shedEnergy += shed * dt;
+        maxCurrent = Math.max(maxCurrent, current);
+
+        rows.push({ hour, load, pv, charge, discharge, battery: discharge - charge, grid, soc: soc * 100, shed, voltage, frequency, current, pickup, tripTime, event });
+      }
+
+      return {
+        rows,
+        kpi: { cost, pvEnergy, loadEnergy, gridImportEnergy, exportEnergy, shedEnergy, finalSoc: soc * 100, maxCurrent, relayEvent, scenario }
+      };
+    }
+
+    function resizeCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(420, Math.floor(rect.width * dpr));
+      canvas.height = Math.floor(290 * dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, w: rect.width, h: 290 };
+    }
+
+    function chartBase(ctx, w, h) {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#0b1220";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(148,163,184,.18)";
+      ctx.lineWidth = 1;
+      for (let x = 44; x < w - 10; x += (w - 60) / 6) { ctx.beginPath(); ctx.moveTo(x, 18); ctx.lineTo(x, h - 34); ctx.stroke(); }
+      for (let y = 22; y < h - 34; y += (h - 58) / 5) { ctx.beginPath(); ctx.moveTo(44, y); ctx.lineTo(w - 12, y); ctx.stroke(); }
+      ctx.fillStyle = "rgba(255,255,255,.75)";
+      ctx.font = "11px Arial";
+      ctx.fillText("0 h", 44, h - 12);
+      ctx.fillText("24 h", w - 50, h - 12);
+    }
+
+    function plotSeries(canvasId, series, yMin, yMax) {
+      const canvas = $(canvasId);
+      const { ctx, w, h } = resizeCanvas(canvas);
+      chartBase(ctx, w, h);
+      const left = 44, right = 12, top = 18, bottom = 34;
+      const x = (hour) => left + (hour / 24) * (w - left - right);
+      const y = (value) => h - bottom - ((value - yMin) / (yMax - yMin)) * (h - top - bottom);
+      for (const item of series) {
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = item.width || 2.2;
+        ctx.beginPath();
+        item.values.forEach((p, i) => {
+          const px = x(p.hour), py = y(p.value);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(255,255,255,.75)";
+      ctx.font = "11px Arial";
+      ctx.fillText(String(Math.round(yMax)), 8, top + 4);
+      ctx.fillText(String(Math.round(yMin)), 8, h - bottom);
+    }
+
+    function render() {
+      latest = simulate();
+      const { rows, kpi } = latest;
+      const last = rows[rows.length - 1];
+      const noon = rows[Math.floor(12 / 0.25)];
+      const activeEvent = rows.find((r) => r.event) || last;
+      const tripped = kpi.relayEvent !== "No trip";
+      const badge = $("systemBadge");
+      badge.textContent = tripped ? "Protection event detected" : kpi.shedEnergy > 0 ? "Energy shortage / load shed" : "Stable operation";
+      badge.className = tripped ? "badge trip" : kpi.shedEnergy > 0 ? "badge warn" : "badge";
+
+      $("pvEnergy").textContent = `${kpi.pvEnergy.toFixed(0)} kWh`;
+      $("gridCost").textContent = `PKR ${kpi.cost.toFixed(0)}`;
+      $("finalSoc").textContent = `${kpi.finalSoc.toFixed(1)}%`;
+      $("shedEnergy").textContent = `${kpi.shedEnergy.toFixed(1)} kWh`;
+      $("relayDecision").textContent = kpi.relayEvent;
+
+      $("pvNow").textContent = `${noon.pv.toFixed(0)} kW noon`;
+      $("socNow").textContent = `${last.soc.toFixed(1)}% SOC`;
+      $("gridNow").textContent = `${last.grid.toFixed(0)} kW`;
+      $("loadNow").textContent = `${last.load.toFixed(0)} kW`;
+      $("busNow").textContent = `${activeEvent.voltage.toFixed(2)} pu, ${activeEvent.frequency.toFixed(2)} Hz`;
+      $("relayNow").textContent = tripped ? "TRIP" : "Healthy";
+
+      const relays = [
+        ["50/51 Overcurrent", Math.max(...rows.map((r) => r.current)) > val("pickup") ? "PICKUP" : "OK", Math.max(...rows.map((r) => r.current)).toFixed(0) + " A"],
+        ["27 Undervoltage", Math.min(...rows.map((r) => r.voltage)) < 0.82 ? "TRIP" : "OK", Math.min(...rows.map((r) => r.voltage)).toFixed(2) + " pu"],
+        ["81 Frequency", rows.some((r) => r.frequency < 49.2 || r.frequency > 50.8) ? "TRIP" : "OK", Math.min(...rows.map((r) => r.frequency)).toFixed(2) + " Hz min"],
+        ["Islanding Logic", rows.some((r) => r.event === "ISLAND" || r.event === "SHED") ? "ACTIVE" : "STANDBY", inputs.scenario.value],
+        ["Load Shedding", kpi.shedEnergy > 0 ? "ACTIVE" : "OK", kpi.shedEnergy.toFixed(1) + " kWh"]
+      ];
+      $("relayPanel").innerHTML = relays.map(([name, state, value]) => {
+        const cls = state === "OK" || state === "STANDBY" ? "status-ok" : state === "PICKUP" || state === "ACTIVE" ? "status-warn" : "status-trip";
+        return `<div class="relay"><span><strong>${name}</strong><br>${value}</span><span class="${cls}">${state}</span></div>`;
+      }).join("");
+
+      plotSeries("powerChart", [
+        { color: "#fbbf24", values: rows.map((r) => ({ hour: r.hour, value: r.pv })) },
+        { color: "#60a5fa", values: rows.map((r) => ({ hour: r.hour, value: r.load })) },
+        { color: "#34d399", values: rows.map((r) => ({ hour: r.hour, value: r.battery })) },
+        { color: "#f87171", values: rows.map((r) => ({ hour: r.hour, value: Math.max(0, r.grid) })) }
+      ], -80, Math.max(180, Math.max(...rows.map((r) => r.load)) * 1.1));
+
+      plotSeries("socChart", [
+        { color: "#34d399", values: rows.map((r) => ({ hour: r.hour, value: r.soc })) },
+        { color: "#f87171", values: rows.map((r) => ({ hour: r.hour, value: r.shed })) }
+      ], 0, 100);
+
+      plotSeries("qualityChart", [
+        { color: "#a78bfa", values: rows.map((r) => ({ hour: r.hour, value: r.voltage * 50 })) },
+        { color: "#2dd4bf", values: rows.map((r) => ({ hour: r.hour, value: r.frequency })) }
+      ], 45, 52);
+
+      plotSeries("relayChart", [
+        { color: "#f87171", values: rows.map((r) => ({ hour: r.hour, value: r.current })) },
+        { color: "#fbbf24", values: rows.map((r) => ({ hour: r.hour, value: r.pickup })) }
+      ], 0, Math.max(val("pickup") * 1.4, kpi.maxCurrent * 1.1));
+
+      const interpretation = {
+        normal: "Normal mode shows how PV reduces grid imports during daylight while the battery supports evening peak demand. The relay panel should remain healthy if the load current stays below pickup and the bus remains within voltage/frequency limits.",
+        cloudy: "Cloudy mode stresses the EMS because PV output drops around midday. The battery must smooth renewable intermittency, and the grid covers the remaining deficit.",
+        outage: "Outage mode tests islanded operation. The controller uses battery support first, then records load shedding if demand cannot be supplied without the grid.",
+        overload: "Overload mode checks transformer and relay stress during evening peak. The overcurrent relay may enter pickup if current exceeds the selected setting.",
+        lg: "Line-to-ground fault mode creates voltage sag and elevated current. This demonstrates why undervoltage and overcurrent elements are both useful in protection.",
+        ll: "Line-to-line fault mode produces stronger current and voltage depression than a mild overload, helping distinguish fault behavior from ordinary demand growth.",
+        lll: "Three-phase fault mode creates the most severe current and voltage collapse. A fast relay trip is expected because the fault current is far above pickup."
+      };
+      $("interpretation").textContent = interpretation[inputs.scenario.value];
+
+      $("kpiTable").innerHTML = [
+        ["Load served", `${(kpi.loadEnergy - kpi.shedEnergy).toFixed(1)} kWh`],
+        ["Total demand", `${kpi.loadEnergy.toFixed(1)} kWh`],
+        ["Grid import", `${kpi.gridImportEnergy.toFixed(1)} kWh`],
+        ["Grid export", `${kpi.exportEnergy.toFixed(1)} kWh`],
+        ["Max relay current", `${kpi.maxCurrent.toFixed(0)} A`],
+        ["Minimum voltage", `${Math.min(...rows.map((r) => r.voltage)).toFixed(2)} pu`],
+        ["Minimum frequency", `${Math.min(...rows.map((r) => r.frequency)).toFixed(2)} Hz`],
+        ["Relay event", kpi.relayEvent]
+      ].map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
+    }
+
+    function exportCsv() {
+      if (!latest) render();
+      const header = "hour,load_kw,pv_kw,battery_kw,grid_kw,soc_percent,shed_kw,voltage_pu,frequency_hz,current_a,event";
+      const lines = latest.rows.map((r) => [r.hour.toFixed(2), r.load.toFixed(3), r.pv.toFixed(3), r.battery.toFixed(3), r.grid.toFixed(3), r.soc.toFixed(3), r.shed.toFixed(3), r.voltage.toFixed(4), r.frequency.toFixed(4), r.current.toFixed(3), r.event].join(","));
+      const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "microgrid-digital-twin-results.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    Object.values(inputs).forEach((input) => input.addEventListener("input", render));
+    $("simulate").addEventListener("click", render);
+    $("export").addEventListener("click", exportCsv);
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
