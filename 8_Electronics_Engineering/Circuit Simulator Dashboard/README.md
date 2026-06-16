@@ -1,106 +1,95 @@
-# ⚡ Circuit Simulator Dashboard
+# Circuit Simulator Dashboard
 
-> **Project 8.1 — Electronics Engineering Portfolio**
-> *Interactive RC · RL · RLC Circuit Simulator with Real-Time Waveform Analysis*
+Status: **Version 1 complete**
 
-[![Status](https://img.shields.io/badge/Status-Live%20Demo-brightgreen?style=flat-square)]()
-[![Tech](https://img.shields.io/badge/Tech-HTML%20%2F%20CSS%20%2F%20JS-blue?style=flat-square)]()
-[![Charts](https://img.shields.io/badge/Charts-Chart.js-orange?style=flat-square)]()
-[![Domain](https://img.shields.io/badge/Domain-Electronics%20Engineering-purple?style=flat-square)]()
+## Purpose
 
----
+Build a simple, honest circuit theory project that demonstrates entry-level understanding of RC, RL, and RLC circuits. This is one of the strongest first projects in the electronics portfolio because it directly shows electrical fundamentals.
 
-![Circuit Simulator Dashboard Preview](./preview.png)
+## Engineering Skills To Show
 
-## 🔬 Overview
+- Ohm's law and impedance
+- Capacitor and inductor behavior
+- RC charging and discharging
+- RL current growth and decay
+- RLC resonance and damping
+- Phase angle and frequency response
+- Clean graph-based explanation of circuit behavior
 
-A **premium, browser-based circuit simulation dashboard** that models RC, RL, and RLC circuits in real-time. No backend required — open `index.html` and it runs instantly. Features an oscilloscope-style interface, live phasor diagrams, Bode plots, and transient response analysis.
+## Version 1 Features
 
----
+- Select RC, RL, or RLC series circuit
+- Enter resistance, capacitance, inductance, input voltage, and frequency
+- Calculate impedance, current, phase angle, power factor, and real power
+- Plot voltage and current waveforms on a canvas
+- Show RC/RL time constant where relevant
+- Show RLC resonant frequency and near-resonance status
+- Explain the engineering formula used for each circuit type
 
-## 🚀 Features
+## How To Run
 
-| Feature | Description |
-|---|---|
-| **Circuit Types** | RC · RL · RLC (Series & Parallel) |
-| **Waveform View** | Time-domain Vs(t), VR(t), and I(t) with live updates |
-| **Bode Plot** | Log-frequency magnitude & phase response |
-| **Transient Analysis** | Step response: capacitor charging, inductor kickback, RLC oscillation |
-| **Phasor Diagram** | Rotating vector diagram with phase angle annotation |
-| **Live Metrics** | Z, φ, f₀, Q, Irms, VR, τ, BW, Power Factor, True Power |
-| **SVG Schematic** | Auto-rendered circuit diagram that updates with selections |
-| **Export CSV** | Download waveform data for post-processing |
+Open `index.html` in a modern browser.
 
----
+No installation, backend, package manager, or internet connection is required.
 
-## 🎛️ How to Use
+## Preview
 
-```bash
-# No installation needed — just open in a browser
-open index.html
+![Circuit Simulator Dashboard preview](./screenshot-v1.png)
+
+## Evidence To Capture
+
+- Screenshot of the dashboard
+- Example calculation for one RC circuit
+- Example calculation for one RLC circuit
+- Short note comparing expected theory with output
+
+## Test Examples
+
+### RC Example
+
+Inputs:
+
+- R = 1000 ohm
+- C = 1 uF
+- V = 5 Vrms
+- f = 100 Hz
+
+Expected behavior:
+
+- Capacitive reactance is about 1.59 kohm
+- Total impedance is about 1.88 kohm
+- Current leads voltage
+- Time constant is 1 ms
+
+### RLC Example
+
+Inputs:
+
+- R = 1000 ohm
+- L = 100 mH
+- C = 1 uF
+- V = 5 Vrms
+- f = 503 Hz
+
+Expected behavior:
+
+- Resonant frequency is close to 503 Hz
+- Net reactance is close to zero
+- Current is almost in phase with voltage
+
+## Entry-Level Job Value
+
+This project supports applications for electronics technician trainee, junior electrical engineer, and lab assistant roles. It shows that I can explain the basic behavior of passive circuits and convert theory into a usable tool.
+
+## Current Files
+
+```text
+Circuit Simulator Dashboard/
+|-- README.md
+|-- index.html
+|-- screenshot-v1.png
 ```
 
-1. **Select** your circuit type: `RC`, `RL`, or `RLC`
-2. **Choose** topology: `Series` or `Parallel`
-3. **Tune** component values with sliders (R, C, L, Vs, frequency)
-4. **Explore** the four analysis tabs: Waveform · Bode · Transient · Phasor
-5. **Export** waveform data as `.csv` for further analysis
+## Next Step
 
----
-
-## 🔢 Physics Behind It
-
-### Impedance
-```
-Series:    Z = R + j(ωL - 1/ωC)    |Z| = √(R² + X²)
-Parallel:  Y = 1/R + jωC - j/ωL   Z = 1/Y
-```
-
-### Resonance (RLC)
-```
-f₀ = 1 / (2π√(LC))
-Q_series   = (1/R) · √(L/C)
-Q_parallel = R · √(C/L)
-Bandwidth  = f₀ / Q
-```
-
-### Transient (RC step response)
-```
-Vc(t) = Vs · (1 − e^{−t/τ})    τ = RC
-```
-
-### Transient (RLC underdamped)
-```
-Vc(t) = Vs · [1 − e^{−αt}(cos ωd·t + (α/ωd)·sin ωd·t)]
-α = R/2L,  ωd = √(ω₀² − α²)
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Tool | Role |
-|------|------|
-| HTML5 + CSS3 | Layout, animations, glassmorphism UI |
-| Vanilla JavaScript | Simulation engine, real-time math |
-| Chart.js 4 | Waveform, Bode, Transient plots |
-| SVG | Dynamic circuit schematic rendering |
-| Google Fonts | Orbitron + Inter + JetBrains Mono |
-
----
-
-## 📊 Key Learning Outcomes
-
-- ✅ AC circuit analysis (impedance, phase angle, power factor)
-- ✅ Transient response (charging/discharging, oscillation)
-- ✅ Frequency domain analysis (Bode magnitude & phase)
-- ✅ Phasor representation of AC quantities
-- ✅ RLC resonance, Q-factor, and bandwidth relationships
-
----
-
-## 👨‍💻 Author
-
-**Haris Hussain**
-Space Science · University of the Punjab, Lahore
-Electronics Engineering Portfolio — Project 8.1
+Add screenshots and a `test-cases.md` file after visual review. A later version can add transient response plots for capacitor charging, inductor current growth, and underdamped RLC response.
