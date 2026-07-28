@@ -1,0 +1,19 @@
+﻿name: biparjoy-rainfall-analysis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - earthengine-api
+  - geemap
+  - geopandas
+  - pandas
+  - numpy
+  - xarray
+  - netcdf4
+  - matplotlib
+  - cartopy
+  - shapely
+  - pyproj
+  - rasterio
+  - jupyter
+  - ipykernel

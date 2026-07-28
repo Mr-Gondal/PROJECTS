@@ -1,0 +1,14 @@
+﻿earthengine-api
+geemap
+geopandas
+pandas
+numpy
+xarray
+netCDF4
+matplotlib
+cartopy
+shapely
+pyproj
+rasterio
+jupyter
+ipykernel
