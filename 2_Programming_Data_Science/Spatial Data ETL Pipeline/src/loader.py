@@ -15,9 +15,11 @@ import os
 import logging
 import datetime
 import sqlite3
+from pathlib import Path
 import pandas as pd
 
 from src.config import DB_PATH
+from src.sql_guard import assert_readonly_query, UnsafeSQLError
 
 logger = logging.getLogger(__name__)
 
@@ -358,21 +360,37 @@ class DataLoader:
         db_path: str = DB_PATH, sql_query: str = "SELECT 1"
     ) -> pd.DataFrame:
         """
-        Execute a SELECT query against the SQLite database.
+        Execute a **read-only** query against the SQLite database.
+
+        Hardened for use from untrusted UI (Streamlit SQL Explorer / CLI):
+
+        1. ``assert_readonly_query`` rejects anything that does not start
+           with SELECT/WITH/EXPLAIN and any multi-statement input.
+        2. The database is opened via a SQLite **read-only URI**
+           (``file:...?mode=ro``), so writes fail even if the parser is fooled.
+        3. ``PRAGMA query_only=ON`` blocks writes on any attached DB too.
 
         Args:
             db_path:   path to the SQLite file
-            sql_query: any valid SQLite SELECT statement
+            sql_query: a single SELECT / WITH / EXPLAIN statement
 
         Returns:
-            pandas DataFrame with query results
+            pandas DataFrame with query results (or an 'error' column)
         """
         if not os.path.exists(db_path):
             return pd.DataFrame({"error": ["Database not found — run the pipeline first"]})
         try:
-            conn = sqlite3.connect(db_path)
-            df   = pd.read_sql_query(sql_query, conn)
+            assert_readonly_query(sql_query)
+        except UnsafeSQLError as exc:
+            return pd.DataFrame({"error": [f"Rejected: {exc}"]})
+        try:
+            uri = Path(db_path).resolve().as_uri() + "?mode=ro"
+            conn = sqlite3.connect(uri, uri=True)
+            conn.execute("PRAGMA query_only=ON;")
+            df = pd.read_sql_query(sql_query, conn)
             conn.close()
             return df
+        except sqlite3.OperationalError as exc:
+            return pd.DataFrame({"error": [f"Read-only engine rejected the statement: {exc}"]})
         except Exception as exc:
             return pd.DataFrame({"error": [str(exc)]})

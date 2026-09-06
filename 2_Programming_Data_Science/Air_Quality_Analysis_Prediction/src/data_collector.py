@@ -1,52 +1,38 @@
 import requests
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
+
 from src.config import OWM_API_URL, OWM_API_TOKEN, CITIES, CITY_COORDS, DATA_DIR
-
-
-def _pm25_to_aqi(pm25: float) -> int:
-    if pm25 is None or np.isnan(pm25):
-        return None
-    breakpoints = [
-        (0.0, 12.0, 0, 50),
-        (12.1, 35.4, 51, 100),
-        (35.5, 55.4, 101, 150),
-        (55.5, 150.4, 151, 200),
-        (150.5, 250.4, 201, 300),
-        (250.5, 500.4, 301, 500),
-    ]
-    for clo, chi, aqi_lo, aqi_hi in breakpoints:
-        if clo <= pm25 <= chi:
-            return round(((aqi_hi - aqi_lo) / (chi - clo)) * (pm25 - clo) + aqi_lo)
-    return 500 if pm25 > 500 else 0
-
-
-def _pm10_to_aqi(pm10: float) -> int:
-    if pm10 is None or np.isnan(pm10):
-        return None
-    breakpoints = [
-        (0, 54, 0, 50),
-        (55, 154, 51, 100),
-        (155, 254, 101, 150),
-        (255, 354, 151, 200),
-        (355, 424, 201, 300),
-        (425, 604, 301, 500),
-    ]
-    for clo, chi, aqi_lo, aqi_hi in breakpoints:
-        if clo <= pm10 <= chi:
-            return round(((aqi_hi - aqi_lo) / (chi - clo)) * (pm10 - clo) + aqi_lo)
-    return 500 if pm10 > 604 else 0
+from src.aqi_scale import pm25_to_aqi, pm10_to_aqi
 
 
 class AirQualityCollector:
+    """Fetch current air-pollution data from the OpenWeatherMap API.
+
+    Note: AQI conversion lives in ``src/aqi_scale.py`` (US EPA 2024
+    breakpoints, truncation-based — no band-gap fall-through).
+    Timestamps are stored as timezone-aware UTC so results do not depend
+    on the machine's local timezone.
+    """
+
     def __init__(self, token: str = OWM_API_TOKEN):
+        if not token:
+            raise ValueError(
+                "OpenWeatherMap API token is missing. Set the OWM_API_TOKEN "
+                "environment variable (or Streamlit secret) or pass token=... "
+                "explicitly. Get a free key: https://openweathermap.org/api"
+            )
         self.token = token
         self.session = requests.Session()
 
     def fetch_city_data(self, city: str) -> dict:
         lat, lon = CITY_COORDS[city]
-        resp = self.session.get(OWM_API_URL, params={"lat": lat, "lon": lon, "appid": self.token})
+        resp = self.session.get(
+            OWM_API_URL,
+            params={"lat": lat, "lon": lon, "appid": self.token},
+            timeout=15,
+        )
         resp.raise_for_status()
         data = resp.json()
         if "list" not in data or not data["list"]:
@@ -57,16 +43,23 @@ class AirQualityCollector:
         main = raw.get("main", {})
         comp = raw.get("components", {})
 
-        owm_aqi = main.get("aqi")
         pm25 = comp.get("pm2_5")
         pm10 = comp.get("pm10")
-        us_aqi = _pm25_to_aqi(pm25)
+        # US EPA AQI from PM2.5 (primary), fall back to PM10 if PM2.5 missing
+        us_aqi = pm25_to_aqi(pm25)
         if us_aqi is None:
-            us_aqi = _pm10_to_aqi(pm10)
+            us_aqi = pm10_to_aqi(pm10)
 
-        record = {
+        dt = raw.get("dt")
+        timestamp = (
+            datetime.fromtimestamp(int(dt), tz=timezone.utc)
+            if dt
+            else datetime.now(timezone.utc)
+        )
+
+        return {
             "city": city,
-            "timestamp": datetime.fromtimestamp(raw.get("dt", 0)),
+            "timestamp": timestamp,
             "aqi": us_aqi,
             "pm25": pm25,
             "pm10": pm10,
@@ -75,7 +68,6 @@ class AirQualityCollector:
             "co": comp.get("co"),
             "o3": comp.get("o3"),
         }
-        return record
 
     def collect_cities_current(self, cities: list[str] = None) -> pd.DataFrame:
         if cities is None:

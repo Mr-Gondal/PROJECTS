@@ -22,8 +22,6 @@ import uuid
 import json
 import logging
 import datetime
-import warnings
-warnings.filterwarnings("ignore")
 
 # Ensure package root is on path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

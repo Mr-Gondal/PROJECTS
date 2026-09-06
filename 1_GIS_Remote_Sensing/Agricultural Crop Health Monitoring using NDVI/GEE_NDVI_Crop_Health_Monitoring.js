@@ -41,8 +41,7 @@ print('Analysis Period:', startDate, 'to', endDate);
 var s2Collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
   .filterBounds(aoi)
   .filterDate(startDate, endDate)
-  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
-  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 0));
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20));
 
 print('Total Sentinel-2 images found:', s2Collection.size());
 

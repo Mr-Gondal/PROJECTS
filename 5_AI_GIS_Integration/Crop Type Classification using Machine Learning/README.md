@@ -1,4 +1,7 @@
 # PROJECT 5.5: Crop Type Classification using Machine Learning
+
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
 --------------------------------------------------------------------------------
 Description:    Classify different crop types in Punjab using multi-temporal
                 satellite imagery and machine learning. Create crop maps for

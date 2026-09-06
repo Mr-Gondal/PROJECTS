@@ -1,5 +1,8 @@
 # PROJECT 7.10: Land surface temperature map for Lahore
 
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
+
 ================================================================================
                           RECOMMENDED PORTFOLIO STRUCTURE
 ================================================================================

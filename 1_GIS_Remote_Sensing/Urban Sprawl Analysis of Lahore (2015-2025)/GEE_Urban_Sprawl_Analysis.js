@@ -5,7 +5,12 @@
 
 // 1. DEFINE STUDY AREA (Lahore, Pakistan)
 var admin2 = ee.FeatureCollection("FAO/GAUL/2015/level2");
-var roi = admin2.filter(ee.Filter.eq('ADM2_NAME', 'Lahore')).first().geometry();
+// Filter to Pakistan FIRST — GAUL contains 'Lahore' districts in both
+// India and Pakistan, and .first() would silently pick an arbitrary one.
+var roi = admin2.filter(ee.Filter.and(
+    ee.Filter.eq('ADM0_NAME', 'Pakistan'),
+    ee.Filter.eq('ADM2_NAME', 'Lahore')
+)).first().geometry();
 
 Map.centerObject(roi, 10);
 Map.addLayer(roi, {color: 'red'}, 'Lahore Boundary', false);

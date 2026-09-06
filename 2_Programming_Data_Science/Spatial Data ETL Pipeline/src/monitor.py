@@ -21,6 +21,12 @@ from src.config import DB_PATH
 
 logger = logging.getLogger(__name__)
 
+# Allow-list for internal table names (never interpolate unvalidated strings
+# into SQL — this is the fixed version of the previous f-string queries).
+_ALLOWED_TABLES = frozenset(
+    {"districts", "environmental_data", "land_use", "infrastructure", "pipeline_runs"}
+)
+
 
 class PipelineMonitor:
     """
@@ -77,6 +83,8 @@ class PipelineMonitor:
         rows   = []
 
         for table in tables:
+            if table not in _ALLOWED_TABLES:  # defense in depth
+                continue
             if conn is None:
                 rows.append({
                     "table":       table,

@@ -17,11 +17,16 @@ Project: Spatial Data ETL Pipeline | Pakistan Geospatial Data Platform
 
 import os
 import json
+import math
 import logging
 import datetime
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
+from pyproj import Transformer
 from shapely.geometry import Point, mapping
+from shapely.ops import transform as shapely_transform
 
 from src.config import (
     PAKISTAN_DISTRICTS, RAW_DATA_DIR, LOG_DIR,
@@ -33,6 +38,28 @@ os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(RAW_DATA_DIR, exist_ok=True)
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Proxy boundary helper ────────────────────────────────────────────────────
+@lru_cache(maxsize=256)
+def _aeqd_transformers(lon: float, lat: float):
+    """Local azimuthal-equal-area <-> WGS84 transformer pair (true-area buffer)."""
+    aeqd = f"+proj=aeqd +lon_0={lon} +lat_0={lat} +datum=WGS84"
+    fwd = Transformer.from_crs("EPSG:4326", aeqd, always_xy=True)
+    inv = Transformer.from_crs(aeqd, "EPSG:4326", always_xy=True)
+    return fwd, inv
+
+
+def _district_proxy_polygon(lon: float, lat: float, area_km2: float, vertices: int = 32):
+    """Circle around (lon, lat) whose geodesic area == area_km2.
+
+    Buffering directly in degrees (the old approach) distorted areas by
+    ~3x and ignored longitude compression at higher latitudes.
+    """
+    radius_m = math.sqrt(max(area_km2, 0.0) * 1e6 / math.pi)
+    fwd, inv = _aeqd_transformers(round(lon, 4), round(lat, 4))
+    circle_local = Point(0.0, 0.0).buffer(radius_m, resolution=vertices // 4)
+    return shapely_transform(inv, circle_local)
 
 
 class DataExtractor:
@@ -284,17 +311,16 @@ class DataExtractor:
         """
         Simulate extraction of district boundary GeoJSON from a spatial API.
 
-        Creates simplified circular/polygonal proxy boundaries by buffering
-        district centroids — avoids any shapefile dependencies.
+        Creates clearly-simplified circular proxy boundaries around district
+        centroids. Each circle's **true area equals the district's recorded
+        ``area_km2``** (buffering is done in a local azimuthal equal-area
+        projection, not in raw degrees), so downstream spatial metrics
+        (area / perimeter / compactness) stay internally consistent.
         """
         logger.info("Extracting GeoJSON boundaries from simulated spatial API…")
         features = []
         for d in PAKISTAN_DISTRICTS:
-            # Create a simplified hexagonal polygon around the centroid
-            center = Point(d["lon"], d["lat"])
-            # Buffer radius proportional to area (approx degrees)
-            radius_deg = (d["area_km2"] ** 0.5) / 111.0  # 1 deg ≈ 111 km
-            polygon = center.buffer(radius_deg, resolution=6)  # hexagon
+            polygon = _district_proxy_polygon(d["lon"], d["lat"], d["area_km2"])
 
             feature = {
                 "type": "Feature",

@@ -20,7 +20,7 @@ def load_climate_data(config: dict) -> pd.DataFrame:
     csv_path = PROJECT_ROOT / config["inputs"]["district_climate_csv"]
     if not csv_path.exists():
         raise FileNotFoundError(
-            f"Missing input climate CSV: {csv_path}. Run scripts/01_data_download.py first."
+            f"Missing input climate CSV: {csv_path}. Run scripts/01_data_prepare.py first."
         )
     return pd.read_csv(csv_path)
 

@@ -4,12 +4,11 @@
 // Output: Exports a Solar Site Suitability Raster for further refinement in ArcGIS Pro.
 
 // 1. DEFINE STUDY AREA (Punjab)
-// Using FAO GAUL boundaries. The default is 'Punjab' in India. 
-// You can change 'India' to 'Pakistan' or 'ADM1_NAME' if you are looking at the Pakistani province.
+// Using FAO GAUL boundaries — filtered to Punjab province, PAKISTAN.
 var admin = ee.FeatureCollection("FAO/GAUL/2015/level1");
 var roi = admin.filter(ee.Filter.and(
   ee.Filter.eq('ADM1_NAME', 'Punjab'),
-  ee.Filter.eq('ADM0_NAME', 'India') // Change 'India' to 'Pakistan' if needed
+  ee.Filter.eq('ADM0_NAME', 'Pakistan')
 )).first().geometry();
 
 Map.centerObject(roi, 7);
