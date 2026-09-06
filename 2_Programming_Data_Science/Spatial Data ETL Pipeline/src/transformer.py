@@ -239,25 +239,43 @@ class DataTransformer:
         return df
 
     # ─── Spatial Metrics ──────────────────────────────────────────────────────
+    @staticmethod
+    def _utm_epsg_for_lon(lon: float) -> str:
+        """Correct UTM zone EPSG for a longitude.
+
+        Pakistan spans ~61–78°E, i.e. UTM zones 41–43. Projecting the whole
+        country through a single zone (the old behaviour, always zone 42N)
+        distorts areas/perimeters at the edges — so each district is measured
+        in its own local zone.
+        """
+        zone = int((lon + 180) // 6) + 1
+        return f"EPSG:{32600 + zone}"  # northern hemisphere
+
     def compute_spatial_metrics(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """
         Compute geometric/spatial metrics for each district polygon.
 
         Metrics added:
-          - area_m2, area_km2_computed: polygon area
-          - perimeter_m: polygon perimeter
+          - area_m2, area_km2_computed: polygon area (local UTM zone)
+          - perimeter_m: polygon perimeter (local UTM zone)
           - compactness: Polsby-Popper compactness ratio (0-1, 1=circle)
           - centroid_lat, centroid_lon: centroid coordinates (WGS84)
         """
         logger.info("Computing spatial metrics…")
         gdf = gdf.copy()
 
-        # Work in UTM for metric calculations
-        gdf_utm = gdf.to_crs(PAKISTAN_UTM_CRS) if gdf.crs else gdf
+        # Measure each polygon in its own local UTM zone (see _utm_epsg_for_lon)
+        areas, perimeters = [], []
+        for geom in gdf.geometry:
+            lon_ref = geom.centroid.x if gdf.crs and gdf.crs.is_geographic else gdf.geometry.centroid.x.mean()
+            local_epsg = self._utm_epsg_for_lon(float(lon_ref))
+            gs_local = gpd.GeoSeries([geom], crs=gdf.crs).to_crs(local_epsg)
+            areas.append(float(gs_local.area.iloc[0]))
+            perimeters.append(float(gs_local.length.iloc[0]))
 
-        gdf["area_m2"]          = gdf_utm.geometry.area.round(2)
+        gdf["area_m2"] = np.round(areas, 2)
         gdf["area_km2_computed"] = (gdf["area_m2"] / 1e6).round(4)
-        gdf["perimeter_m"]      = gdf_utm.geometry.length.round(2)
+        gdf["perimeter_m"] = np.round(perimeters, 2)
 
         # Polsby-Popper compactness: 4π·A / P²
         gdf["compactness"] = (
@@ -265,7 +283,7 @@ class DataTransformer:
         ).round(4)
 
         # Centroid in WGS84
-        gdf_wgs = gdf_utm.to_crs(DEFAULT_CRS)
+        gdf_wgs = gdf.to_crs(DEFAULT_CRS) if gdf.crs else gdf
         gdf["centroid_lon"] = gdf_wgs.geometry.centroid.x.round(6)
         gdf["centroid_lat"] = gdf_wgs.geometry.centroid.y.round(6)
 

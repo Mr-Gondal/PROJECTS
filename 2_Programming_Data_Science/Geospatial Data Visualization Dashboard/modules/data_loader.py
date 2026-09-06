@@ -90,50 +90,50 @@ def load_district_data() -> pd.DataFrame:
         'district': [
             'Lahore', 'Karachi', 'Faisalabad', 'Rawalpindi', 'Multan',
             'Peshawar', 'Quetta', 'Islamabad', 'Hyderabad', 'Gujranwala',
-            'Multan', 'Bahawalpur', 'Sargodha', 'Sialkot', 'Sukkur',
+            'Bahawalpur', 'Sargodha', 'Sialkot', 'Sukkur',
             'Abbottabad', 'Mardan', 'Mingora', 'Muzaffarabad', 'Gilgit',
             'Sahiwal', 'Sheikhupura', 'Jhang', 'Kasur', 'Rahim Yar Khan',
-            'Gujrat', 'Jhelum', 'Sialkot', 'Attock', 'Okara'
+            'Gujrat', 'Jhelum', 'Attock', 'Okara'
         ],
         'province': [
             'Punjab', 'Sindh', 'Punjab', 'Punjab', 'Punjab',
             'KPK', 'Balochistan', 'ICT', 'Sindh', 'Punjab',
-            'Punjab', 'Punjab', 'Punjab', 'Punjab', 'Sindh',
+            'Punjab', 'Punjab', 'Punjab', 'Sindh',
             'KPK', 'KPK', 'KPK', 'AJK', 'Gilgit-Baltistan',
             'Punjab', 'Punjab', 'Punjab', 'Punjab', 'Punjab',
-            'Punjab', 'Punjab', 'Punjab', 'Punjab', 'Punjab'
+            'Punjab', 'Punjab', 'Punjab', 'Punjab'
         ],
         'population': [
             11126763, 14910352, 3203829, 2091711, 1872966,
             1970042, 1001609, 1009816, 1843659, 1527696,
-            1872966, 1619862, 1594375, 1455186, 1487218,
+            1619862, 1594375, 1455186, 1487218,
             1338592, 1599462, 1180381, 725000, 243000,
             2417000, 2100000, 1525000, 2900000, 1250000,
-            2056366, 900000, 1525000, 847000, 1200000
+            2056366, 900000, 847000, 1200000
         ],
         'area_sqkm': [
             1772, 3527, 5856, 5286, 3721,
             1257, 2653, 906, 2835, 3622,
-            3721, 24830, 5165, 3016, 5165,
+            24830, 5165, 3016, 5165,
             1967, 1632, 1249, 2484, 72520,
             4198, 5960, 8809, 3995, 14891,
-            3022, 2713, 3016, 2817, 4577
+            3022, 2713, 2817, 4577
         ],
         'latitude': [
             31.5204, 24.8607, 31.4504, 33.5651, 30.1575,
             34.0151, 30.1798, 33.6844, 25.3960, 32.1617,
-            30.1575, 29.3544, 32.0836, 32.4945, 27.7063,
+            29.3544, 32.0836, 32.4945, 27.7063,
             34.1466, 34.1982, 34.7857, 34.3528, 35.9206,
             30.6690, 31.7075, 31.3021, 31.1096, 28.4186,
-            32.5741, 32.9358, 32.4945, 33.7732, 30.8075
+            32.5741, 32.9358, 33.7732, 30.8075
         ],
         'longitude': [
             74.3587, 67.0011, 73.0754, 73.0169, 71.5249,
             71.5805, 66.9747, 73.0479, 68.3575, 74.1885,
-            71.5249, 71.6941, 72.6851, 74.5314, 68.8594,
-            73.2126, 72.0586, 72.3607, 73.4653, 74.3587,
+            71.6941, 72.6851, 74.5314, 68.8594,
+            73.2126, 72.0586, 72.3607, 73.4653, 74.3085,
             73.1054, 74.1968, 72.3101, 74.4500, 70.2992,
-            74.0808, 73.7258, 74.5314, 72.3567, 73.4485
+            74.0808, 73.7258, 72.3567, 73.4485
         ]
     }
     return pd.DataFrame(data)
@@ -300,7 +300,7 @@ def get_province_centroids() -> Dict[str, tuple]:
         'KPK': (34.9527, 72.3317),
         'Balochistan': (28.4956, 65.1013),
         'AJK': (34.3528, 73.4653),
-        'Gilgit-Baltistan': (35.9206, 74.3587),
+        'Gilgit-Baltistan': (35.9206, 74.3085),  # Gilgit lon (was wrongly copied from Lahore)
         'ICT': (33.6844, 73.0479)
     }
 

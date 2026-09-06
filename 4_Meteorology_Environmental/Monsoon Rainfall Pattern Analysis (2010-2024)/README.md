@@ -1,5 +1,8 @@
 # 🌧️ Monsoon Rainfall Pattern Analysis (2010-2024)
 
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
+
 **A decade-long spatiotemporal analysis of monsoon rainfall dynamics and extreme event correlations in Pakistan**
 
 ---
@@ -76,7 +79,9 @@ Stage 4: Correlation Analysis
 
 ---
 
-## 📊 Key Findings
+## 📊 Planned Analyses & Target Insights
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
+
 
 ### Monsoon Trends (2010-2024)
 
@@ -107,15 +112,17 @@ Stage 4: Correlation Analysis
 
 ---
 
-## 📈 Outputs & Deliverables
+## 📈 Planned Deliverables
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
 
-✅ **Trend Maps** - Rainfall trends (1980-2024) by region  
-✅ **Anomaly Grids** - Seasonal precipitation anomalies  
-✅ **Extreme Event Catalog** - 28 documented extreme monsoon events  
-✅ **Early Warning Index** - Predictive indicator for flooding  
-✅ **Interactive Dashboard** - Real-time monsoon tracking  
-✅ **Technical Report** - 35+ pages with publication-quality figures  
-✅ **Time-Series Datasets** - Station and grid-based rainfall files  
+
+📋 **Trend Maps** - Rainfall trends (1980-2024) by region  
+📋 **Anomaly Grids** - Seasonal precipitation anomalies  
+📋 **Extreme Event Catalog** - 28 documented extreme monsoon events  
+📋 **Early Warning Index** - Predictive indicator for flooding  
+📋 **Interactive Dashboard** - Real-time monsoon tracking  
+📋 **Technical Report** - 35+ pages with publication-quality figures  
+📋 **Time-Series Datasets** - Station and grid-based rainfall files  
 
 ---
 

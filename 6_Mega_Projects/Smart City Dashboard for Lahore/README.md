@@ -1,4 +1,7 @@
 # PROJECT 6.2: Smart City Dashboard for Lahore
+
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
 --------------------------------------------------------------------------------
 Description:    Create a comprehensive smart city dashboard integrating
                 multiple urban datasets including traffic, air quality, land

@@ -1,4 +1,4 @@
-﻿# 02 â€” Tropical-Cyclone Rainfall and Track Analysis
+﻿# 02 — Tropical-Cyclone Rainfall and Track Analysis
 
 ## Case study and question
 **Cyclone Biparjoy, Arabian Sea, June 2023.** How did satellite-observed rainfall vary with storm intensity, translation speed, distance from the storm centre and landfall?

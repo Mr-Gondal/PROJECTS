@@ -354,14 +354,12 @@ if run_analysis:
             date_end=str(date_end),
             max_cloud_cover=float(max_cloud),
         )
-        time.sleep(0.3)
         progress_bar.progress(20, text="📡 Loading spectral bands…")
 
         # ── Step 2: Load bands ───────────────────────────────────────────────
         status_placeholder.info("Step 2/5 — Loading synthetic Sentinel-2 bands…")
         scene_id = metadata["scene_id"]
         bands    = client.load_bands(region_name, scene_id)
-        time.sleep(0.3)
         progress_bar.progress(40, text="📐 Computing spectral indices…")
 
         # ── Step 3: Spectral indices ──────────────────────────────────────────
@@ -369,14 +367,12 @@ if run_analysis:
         proc    = SatelliteProcessor()
         indices = proc.compute_all_indices(bands)
         idx_stats = proc.get_index_statistics(indices)
-        time.sleep(0.3)
         progress_bar.progress(55, text="🗺️ Running LULC classification…")
 
         # ── Step 4: LULC ─────────────────────────────────────────────────────
         status_placeholder.info("Step 4/5 — KMeans LULC classification…")
         classifier   = LULCClassifier(n_clusters=n_clusters)
         lulc_map, lulc_stats = classifier.classify_image(bands, indices)
-        time.sleep(0.4)
         progress_bar.progress(75, text="🔄 Running change detection…")
 
         # ── Step 5: Change detection ─────────────────────────────────────────
@@ -384,7 +380,6 @@ if run_analysis:
         bands_t1, bands_t2 = client.generate_multi_temporal(region_name, years=[2020, 2024])
         detector           = ChangeDetector()
         change_results     = detector.detect_all_changes(bands_t1, bands_t2)
-        time.sleep(0.3)
         progress_bar.progress(95, text="📄 Generating report…")
 
         # ── Report ───────────────────────────────────────────────────────────

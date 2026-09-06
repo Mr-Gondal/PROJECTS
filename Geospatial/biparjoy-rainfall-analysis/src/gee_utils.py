@@ -15,9 +15,9 @@ def initialize_ee():
 def imerg_collection(start_date, end_date):
     """Return GPM IMERG half-hourly precipitation images for a date range."""
     return (
-        ee.ImageCollection("NASA/GPM_L3/IMERG_V06")
+        ee.ImageCollection("NASA/GPM_L3/IMERG_V07")
         .filterDate(start_date, end_date)
-        .select("precipitationCal")
+        .select("precipitation")  # V07 renamed band (was precipitationCal in V06)
     )
 
 

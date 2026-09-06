@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+.env.*
+!.env.example
 venv/
 .venv/
 .ipynb_checkpoints/
@@ -9,3 +11,20 @@ venv/
 Thumbs.db
 **/figures/
 **/__pycache__/
+.pytest_cache/
+
+# ─── Generated artifacts — regenerate via each project's CLI ────────────────
+# Trained models (Air Quality): python main.py --input ... --train
+*.joblib
+# ETL SQLite DB + generated raw/processed data: python main.py run --all
+**/*.sqlite
+**/data/raw/*
+!**/data/raw/.gitkeep
+**/data/processed/*
+!**/data/processed/.gitkeep
+# Biparjoy exported figures/GeoTIFFs
+**/output/*
+!**/output/.gitkeep
+
+# ─── Secrets ────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml

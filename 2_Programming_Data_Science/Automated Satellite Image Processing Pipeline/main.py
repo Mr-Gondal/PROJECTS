@@ -127,7 +127,6 @@ def run_pipeline(
     step += 1
     _step(step, total_steps, "Querying STAC catalogue…")
     metadata = client.query_sentinel2(region, start, end)
-    time.sleep(0.1)
     cprint(
         f"     → {metadata['n_scenes']} scenes | "
         f"Cloud: {metadata['cloud_cover']}% | "

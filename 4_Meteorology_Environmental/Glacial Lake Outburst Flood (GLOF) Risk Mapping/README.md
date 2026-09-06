@@ -1,5 +1,8 @@
 # ❄️ Glacial Lake Outburst Flood (GLOF) Risk Mapping
 
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
+
 **An advanced satellite-based hazard assessment of glacial lake risks in Pakistan's high mountain regions**
 
 ---
@@ -83,7 +86,9 @@ Phase 4: Impact Mapping
 
 ---
 
-## 📊 Key Findings
+## 📊 Planned Analyses & Target Insights
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
+
 
 ### Glacial Lake Inventory
 
@@ -139,15 +144,17 @@ Phase 4: Impact Mapping
 
 ---
 
-## 📈 Outputs & Deliverables
+## 📈 Planned Deliverables
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
 
-✅ **Glacial Lake Inventory** - 4,724 lakes with attributes (shapefile/GeoJSON)  
-✅ **Risk Classification Maps** - Critical/High/Moderate/Low zones  
-✅ **Hazard Assessment Report** - 60+ pages technical analysis  
-✅ **Flood Propagation Maps** - Downstream impact zones (HEC-RAS models)  
-✅ **Time-Series Imagery** - Lake evolution 2000-2024  
-✅ **Interactive Web Dashboard** - Real-time monitoring tool  
-✅ **Decision Support Tool** - Risk prioritization matrix  
+
+📋 **Glacial Lake Inventory** - 4,724 lakes with attributes (shapefile/GeoJSON)  
+📋 **Risk Classification Maps** - Critical/High/Moderate/Low zones  
+📋 **Hazard Assessment Report** - 60+ pages technical analysis  
+📋 **Flood Propagation Maps** - Downstream impact zones (HEC-RAS models)  
+📋 **Time-Series Imagery** - Lake evolution 2000-2024  
+📋 **Interactive Web Dashboard** - Real-time monitoring tool  
+📋 **Decision Support Tool** - Risk prioritization matrix  
 
 ---
 

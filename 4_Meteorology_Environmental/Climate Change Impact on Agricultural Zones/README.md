@@ -1,5 +1,8 @@
 # 🌾 Climate Change Impact on Agricultural Zones
 
+> **🚧 Status: Early-stage build** — the pipeline runs end-to-end, but currently on a small **illustrative sample dataset** (4 districts, 20 rows) written by `scripts/01_data_prepare.py`. Real WorldClim/CMIP6 ingestion is the next milestone; the structure below documents the intended full workflow.
+
+
 **A geospatial analysis of shifting crop suitability zones in Pakistan under climate change scenarios**
 
 ---
@@ -111,7 +114,7 @@ Pakistan's agriculture sector contributes 19% to GDP and employs ~42% of the wor
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python scripts/01_data_download.py
+python scripts/01_data_prepare.py
 python scripts/02_climate_analysis.py
 python scripts/03_crop_suitability.py --scenario ssp245 --year 2050
 python scripts/04_visualization.py --scenario ssp245 --year 2050
@@ -156,7 +159,7 @@ climate-agriculture/
 │   ├── processed/    # Derived anomalies, trends, and suitability outputs
 │   └── shapefile/    # Pakistan admin boundaries
 ├── scripts/
-│   ├── 01_data_download.py
+│   ├── 01_data_prepare.py
 │   ├── 02_climate_analysis.py
 │   ├── 03_crop_suitability.py
 │   └── 04_visualization.py

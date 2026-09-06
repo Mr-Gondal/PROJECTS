@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.config import CITIES, FIGURES_DIR, MODELS_DIR, DATA_DIR
+from src.config import CITIES, FIGURES_DIR, MODELS_DIR, DATA_DIR, OWM_API_TOKEN
 from src.data_collector import AirQualityCollector
 from src.analyzer import AirQualityAnalyzer
-from src.model import AirQualityPredictor, train_all_models
+from src.model import AirQualityPredictor, train_all_models, MIN_TRAIN_ROWS
 
 
 def parse_args():
@@ -31,8 +31,16 @@ def parse_args():
 
 def run_fetch() -> pd.DataFrame:
     print("[1/3] Fetching AQI data for Pakistan cities...")
-    collector = AirQualityCollector()
+    if not OWM_API_TOKEN:
+        print("Error: OWM_API_TOKEN is not set.")
+        print("  Get a free key at https://openweathermap.org/api/air-pollution")
+        print("  Then:  export OWM_API_TOKEN=your_key   (Windows: set OWM_API_TOKEN=your_key)")
+        sys.exit(1)
+    collector = AirQualityCollector(token=OWM_API_TOKEN)
     df = collector.collect_cities_current(CITIES)
+    if df.empty:
+        print("Error: no city returned data (check the API key / connectivity).")
+        sys.exit(1)
     path = collector.save_raw(df)
     print(f"      Saved {len(df)} records to {path}")
     return df
@@ -59,6 +67,14 @@ def run_analysis(df: pd.DataFrame):
 
 def run_training(df: pd.DataFrame, target: str = "pm25"):
     print(f"[3/3] Training models to predict '{target}'...")
+    if len(df) < MIN_TRAIN_ROWS:
+        print(
+            f"  Skipping training: only {len(df)} rows available "
+            f"(minimum {MIN_TRAIN_ROWS}). A 5-row live snapshot is not enough "
+            "to fit/evaluate a model — train on the historical sample or an "
+            "accumulated CSV instead (--input data/raw/aqi_sample.csv)."
+        )
+        return
     results = train_all_models(df, target=target)
     for name, metrics in results.items():
         print(f"\n  {name}:")
@@ -68,9 +84,14 @@ def run_training(df: pd.DataFrame, target: str = "pm25"):
 
 def run_prediction(input_path: str, model_path: str = None):
     print("Running prediction on new data...")
-    df = pd.read_csv(input_path)
     if model_path is None:
         model_path = MODELS_DIR / "aqi_predictor_random_forest.joblib"
+    if not Path(model_path).exists():
+        print(f"Error: model file not found: {model_path}")
+        print("  Model artifacts are not committed to git (they are generated).")
+        print("  Train first:  python main.py --input data/raw/aqi_sample.csv --train --analyze")
+        sys.exit(1)
+    df = pd.read_csv(input_path)
     predictor = AirQualityPredictor()
     predictor.load(str(model_path))
     X, _ = predictor.prepare_features(df, target="pm25")

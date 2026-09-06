@@ -8,7 +8,7 @@
 ![NumPy](https://img.shields.io/badge/NumPy-Raster%20Processing-013243?style=flat-square&logo=numpy&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-**A cloud-native Earth Observation pipeline for Pakistan — spectral analysis, unsupervised land cover classification, and bi-temporal change detection. Fully offline with production-ready architecture.**
+**An Earth Observation analysis pipeline for Pakistan — spectral analysis, unsupervised land cover classification, and bi-temporal change detection. Runs fully offline on a clearly-labelled synthetic Sentinel-2 data layer.**
 
 [Features](#-features) • [How It Works](#-how-it-works) • [Architecture](#-architecture) • [Installation](#-installation) • [Usage](#-usage) • [Project Structure](#-project-structure)
 

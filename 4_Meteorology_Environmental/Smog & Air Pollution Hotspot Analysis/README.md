@@ -1,5 +1,8 @@
 # 💨 Smog & Air Pollution Hotspot Analysis
 
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
+
 **A satellite-based atmospheric analysis of air quality patterns, pollution sources, and public health impacts across Punjab**
 
 ---
@@ -90,7 +93,9 @@ Step 5: Forecasting & Decision Support
 
 ---
 
-## 📊 Key Findings
+## 📊 Planned Analyses & Target Insights
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
+
 
 ### Seasonal Air Quality Patterns
 
@@ -158,17 +163,19 @@ Step 5: Forecasting & Decision Support
 
 ---
 
-## 📈 Outputs & Deliverables
+## 📈 Planned Deliverables
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
 
-✅ **Daily AOD Maps** - High-resolution pollution intensity maps (1km grid)  
-✅ **Hotspot Identification** - Statistical clustering maps  
-✅ **Crop Burning Maps** - Active fire detection + AOD correlation  
-✅ **Health Risk Maps** - Vulnerable population exposure assessment  
-✅ **Time-Series Data** - 10-year AOD trends by district  
-✅ **Air Quality Forecasts** - 7-day ahead predictions  
-✅ **Public Health Advisory System** - Automated alert system  
-✅ **Technical Report** - 50+ pages with policy recommendations  
-✅ **Interactive Dashboard** - Real-time air quality tracking tool  
+
+📋 **Daily AOD Maps** - High-resolution pollution intensity maps (1km grid)  
+📋 **Hotspot Identification** - Statistical clustering maps  
+📋 **Crop Burning Maps** - Active fire detection + AOD correlation  
+📋 **Health Risk Maps** - Vulnerable population exposure assessment  
+📋 **Time-Series Data** - 10-year AOD trends by district  
+📋 **Air Quality Forecasts** - 7-day ahead predictions  
+📋 **Public Health Advisory System** - Automated alert system  
+📋 **Technical Report** - 50+ pages with policy recommendations  
+📋 **Interactive Dashboard** - Real-time air quality tracking tool  
 
 ---
 

@@ -1,3 +1,11 @@
+"""01_data_prepare.py — build the input climate CSV for the analysis scripts.
+
+Currently this WRITES a small illustrative sample dataset (4 districts x
+{2000, 2010, 2020, 2050-ssp245, 2050-ssp585}). It does NOT download
+WorldClim/CMIP6 data yet — see the README status banner. Swapping in the
+real rasters only requires replacing `build_sample_climate_data()` with a
+real loader emitting the same columns.
+"""
 from __future__ import annotations
 
 import argparse

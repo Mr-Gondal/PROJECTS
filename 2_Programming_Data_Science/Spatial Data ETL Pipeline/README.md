@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <b>Enterprise-grade geospatial ETL pipeline for Pakistan spatial data</b><br>
+  <b>Portfolio-grade geospatial ETL pipeline for Pakistan spatial data</b><br>
   <i>Extract → Transform → Validate → Load → Visualise | 30 districts · 7 provinces · Environmental monitoring</i>
 </p>
 
@@ -106,7 +106,7 @@ The pipeline ingests multi-source spatial data — census records, satellite lan
 - **Spatial Explorer** — Interactive Plotly mapbox choropleth coloured by any variable (population density, urban %, AQI, etc.)
 - **Data Tables** — Paginated table browser with column filters and CSV export
 - **Data Quality** — Quality score gauge (0-100), per-dataset validation breakdown, pass/warn/fail indicators
-- **SQL Explorer** — Ad-hoc SQL query interface with 7 preset queries and CSV download
+- **SQL Explorer** — Ad-hoc SQL query interface with 7 preset queries and CSV download. Hardened read-only: queries are validated (single `SELECT`/`WITH`/`EXPLAIN` only) **and** the database is opened with SQLite `mode=ro` + `PRAGMA query_only=ON`, so the public dashboard can never mutate data.
 - **Analytics** — AQI trend lines, population distribution, land-use pie charts, infrastructure scatter plot, AQI heatmap
 
 ### 🖥️ CLI Tool

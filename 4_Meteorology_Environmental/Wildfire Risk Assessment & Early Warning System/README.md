@@ -1,5 +1,8 @@
 # 🔥 Wildfire Risk Assessment & Early Warning System
 
+> **📌 Status: Specification / Planned** — this folder currently contains a project brief and intended methodology, **not** a completed build (no data, code, or measured results yet). The analyses and outputs described below define the *target scope*.
+
+
 **A real-time satellite-based wildfire risk monitoring and early warning system for Pakistan's forested regions**
 
 ---
@@ -121,7 +124,9 @@ Component 4: Landscape Factors (LANDSCAPE RISK)
 
 ---
 
-## 📊 Key Findings
+## 📊 Planned Analyses & Target Insights
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
+
 
 ### Historical Fire Patterns (2015-2024)
 
@@ -189,17 +194,19 @@ Component 4: Landscape Factors (LANDSCAPE RISK)
 
 ---
 
-## 📈 Outputs & Deliverables
+## 📈 Planned Deliverables
+*The items below are planned analyses / target insights for the future build — they are not measured results.*
 
-✅ **Daily CWRI Maps** - Composite wildfire risk at 1km resolution  
-✅ **Component Risk Layers** - Vegetation, weather, ignition, landscape risks  
-✅ **Active Fire Detection** - Real-time fire hotspot identification  
-✅ **Fire Behavior Predictions** - Rate of spread, intensity, spotting distance  
-✅ **Early Warning Alerts** - Automated notifications at district & provincial levels  
-✅ **Historical Fire Database** - 10-year incident catalog with attributes  
-✅ **Risk Assessment Report** - 55+ pages with policy recommendations  
-✅ **Interactive Dashboard** - Real-time web-based monitoring platform  
-✅ **Decision Support Tool** - Fire resource allocation optimization  
+
+📋 **Daily CWRI Maps** - Composite wildfire risk at 1km resolution  
+📋 **Component Risk Layers** - Vegetation, weather, ignition, landscape risks  
+📋 **Active Fire Detection** - Real-time fire hotspot identification  
+📋 **Fire Behavior Predictions** - Rate of spread, intensity, spotting distance  
+📋 **Early Warning Alerts** - Automated notifications at district & provincial levels  
+📋 **Historical Fire Database** - 10-year incident catalog with attributes  
+📋 **Risk Assessment Report** - 55+ pages with policy recommendations  
+📋 **Interactive Dashboard** - Real-time web-based monitoring platform  
+📋 **Decision Support Tool** - Fire resource allocation optimization  
 
 ---
 

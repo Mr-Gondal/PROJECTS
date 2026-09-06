@@ -19,7 +19,11 @@ LOG_DIR = os.path.join(BASE_DIR, "logs")
 
 # ─── CRS Settings ─────────────────────────────────────────────────────────────
 DEFAULT_CRS = "EPSG:4326"           # WGS84 Geographic
-PAKISTAN_UTM_CRS = "EPSG:32642"    # UTM Zone 42N — covers Pakistan
+# Default UTM zone for central Pakistan. NOTE: the country spans UTM zones
+# 41–43 (~61–78°E), so per-feature measurement code picks the correct local
+# zone itself (see DataTransformer._utm_epsg_for_lon). This constant is only
+# a fallback/label.
+PAKISTAN_UTM_CRS = "EPSG:32642"    # UTM Zone 42N (66–72°E)
 
 # ─── Pakistan Bounding Box ────────────────────────────────────────────────────
 PAKISTAN_BBOX = {

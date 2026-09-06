@@ -1,14 +1,8 @@
 # PROJECT 2.3: Air Quality Analysis & Prediction Model — Pakistan
 
-[![Streamlit App](https://img.shields.io/badge/Streamlit-Live%20Demo-2d6a4f?logo=streamlit)](https://your-app-url.streamlit.app)
-
 An interactive **web dashboard** analyzing air quality across 5 major Pakistan cities — Lahore, Karachi, Islamabad, Peshawar, and Quetta. Features live AQI monitoring, trend analysis, pollutant correlation, and ML-powered predictions.
 
----
-
-## 🚀 Live Demo
-
-**👉 [View the Dashboard](https://your-app-url.streamlit.app)** (click to deploy — see Deployment below)
+> **Honest data note:** in demo mode the dashboard uses a **clearly-labelled synthetic 90-day series** so it runs with zero setup. Live mode pulls real readings from the **OpenWeatherMap Air Pollution API**. Model metrics shown in the *Predict* tab are **computed live on a chronological hold-out split** — they are never hard-coded, and on synthetic data they demonstrate the pipeline rather than real-world forecasting skill.
 
 ---
 
@@ -16,25 +10,29 @@ An interactive **web dashboard** analyzing air quality across 5 major Pakistan c
 
 | Feature | Description |
 |---|---|
-| **📊 Overview** | At-a-glance AQI status for all cities with color-coded health ratings |
-| **🔬 Analytics** | Interactive correlation heatmaps, pollutant composition, AQI trends |
-| **🤖 Predict** | ML-powered pollutant prediction with adjustable environmental factors |
-| **🗺️ City Comparison** | Side-by-side comparison of pollution across cities |
+| **📊 Overview** | At-a-glance AQI status per city, 7-day-window trend deltas, "as of" timestamp |
+| **🔬 Analytics** | Correlation heatmaps, pollutant composition, daily-average AQI trends |
+| **🤖 Predict** | ML pollutant prediction with live-computed test metrics (MAE / RMSE / R²) |
+| **🇺🇸 EPA AQI** | PM2.5/PM10 → AQI via US EPA **2024 breakpoints** with correct truncation |
 | **📈 Interactive Charts** | Plotly-powered zoom, pan, and hover tooltips |
 
 ## 🧠 ML Models
 
-- **Random Forest** — R² ~0.89
-- **Gradient Boosting** — R² ~0.87
-- **Linear Regression** — R² ~0.90
+- **Random Forest**, **Gradient Boosting**, **Linear Regression** — predicting PM2.5, PM10, NO2, SO2, CO, or O3.
 
-Predicts PM2.5, PM10, NO2, SO2, CO, and O3 levels.
+**Training protocol** (leakage-free, see `src/model.py`):
+
+1. Rows sorted by timestamp → first 80% = train, last 20% = test (**chronological split**, not random)
+2. `StandardScaler` fit **on the training split only**
+3. Median imputation learned **from the training split only** and persisted with the model
+
+Model artifacts (`.joblib`) are **not committed** — regenerate locally with `python main.py --input data/raw/aqi_sample.csv --train`.
 
 ---
 
 ## 🛠️ Tech Stack
 
-`Python` `Streamlit` `Scikit-learn` `Pandas` `Plotly` `Matplotlib` `Seaborn` `WAQI API`
+`Python` `Streamlit` `Scikit-learn` `Pandas` `Plotly` `Matplotlib` `OpenWeatherMap API`
 
 ## 📁 Project Structure
 
@@ -43,14 +41,15 @@ Predicts PM2.5, PM10, NO2, SO2, CO, and O3 levels.
 ├── main.py                 # CLI pipeline (alternative)
 ├── requirements.txt        # Dependencies
 ├── src/
-│   ├── config.py           # Configuration
-│   ├── data_collector.py   # AQI API data fetching
+│   ├── config.py           # Configuration & env/secrets handling
+│   ├── aqi_scale.py        # EPA 2024 AQI conversion (pure, unit-tested)
+│   ├── data_collector.py   # OpenWeatherMap API client
 │   ├── analyzer.py         # Analysis & visualization
-│   ├── model.py            # ML prediction models
-│   └── sample_data.py      # Sample data generator
-├── data/                   # Raw & processed data
-├── models/                 # Trained ML models (.joblib)
-└── figures/                # Generated plots
+│   ├── model.py            # ML models (leakage-free protocol)
+│   └── sample_data.py      # Synthetic demo-data generator
+├── data/                   # Raw & processed data (generated, git-ignored)
+├── models/                 # Trained ML models (generated, git-ignored)
+└── figures/                # Generated plots (git-ignored)
 ```
 
 ---
@@ -67,19 +66,21 @@ streamlit run app.py
 # 3. Open http://localhost:8501 in your browser
 ```
 
-> No API key required — sample data loads automatically.
+> No API key required — demo data is generated automatically on first run.
 
 ### CLI Mode (alternative)
 
 ```bash
-python main.py --input data/raw/aqi_sample.csv --analyze --train
+python main.py --input data/raw/aqi_sample.csv --analyze --train   # analyze + train
+python main.py --all                                               # fetch → analyze → train (needs API key)
+python main.py --predict some_new_measurements.csv                 # batch predictions
 ```
 
 ---
 
 ## 🌐 Deployment (Free)
 
-### Option 1: Streamlit Community Cloud (Recommended)
+### Option 1: Streamlit Community Cloud
 
 1. Push this repo to GitHub
 2. Go to [share.streamlit.io](https://share.streamlit.io)
@@ -98,15 +99,30 @@ python main.py --input data/raw/aqi_sample.csv --analyze --train
 
 To use real-time data:
 
-1. Get a free API token from [waqi.info](https://waqi.info)
-2. Set it in the sidebar of the dashboard under "Live API"
-3. Or set in terminal: `set AQI_API_TOKEN=your_token`
+1. Get a free API key from [openweathermap.org](https://openweathermap.org/api/air-pollution)
+2. Paste it in the dashboard sidebar under **"Live API"**, or set it as an environment variable:
+   - Linux/macOS: `export OWM_API_TOKEN=your_key`
+   - Windows: `set OWM_API_TOKEN=your_key`
+3. Or for Streamlit Cloud: add `OWM_API_TOKEN` in *Settings → Secrets*
+
+> The variable name is **`OWM_API_TOKEN`** (used by `src/config.py`, `main.py`, and the dashboard). Live snapshots are appended to the demo history so trend charts keep working.
 
 ---
 
 ## 📸 Screenshots
 
 *(Add screenshots here after deployment)*
+
+---
+
+## 🧪 Tests
+
+AQI conversion logic is unit-tested at the repository root:
+
+```bash
+pip install pytest
+pytest tests/ -q
+```
 
 ---
 

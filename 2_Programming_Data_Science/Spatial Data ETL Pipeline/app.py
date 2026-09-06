@@ -19,7 +19,6 @@ import time
 import uuid
 import logging
 import datetime
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -29,7 +28,6 @@ import streamlit as st
 
 # ─── Path setup (run from project root) ──────────────────────────────────────
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-warnings.filterwarnings("ignore")
 
 from src.config import DB_PATH, PROVINCE_COLORS, PAKISTAN_DISTRICTS
 from src.extractor  import DataExtractor
@@ -934,7 +932,10 @@ with tab5:
     default_sql = preset_queries.get(preset_sel, "SELECT * FROM districts LIMIT 10")
 
     sql_query = st.text_area("SQL Query", value=default_sql, height=140,
-                              key="sql_input")
+                              key="sql_input",
+                              help="Read-only: only single SELECT / WITH / EXPLAIN "
+                                   "statements are accepted; the database is opened "
+                                   "in read-only mode.")
 
     run_sql = st.button("▶️ Execute Query", key="run_sql")
 

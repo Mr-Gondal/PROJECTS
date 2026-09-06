@@ -404,7 +404,7 @@ Map.add(lossLegend);
 // SECTION 11: DISTRICT-LEVEL ANALYSIS (OPTIONAL)
 // ============================================================================
 
-// Load administrative boundaries (GADM level 2)
+// Load protected-area boundaries (World Database on Protected Areas)
 var gadm = ee.FeatureCollection('WCMC/WDPA/current/polygons');
 
 // If you have specific district boundaries, upload them as shapefile
